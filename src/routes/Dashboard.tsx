@@ -9,7 +9,7 @@ import prize3 from "../assets/prize-orange.svg";
 import type { PostgrestSingleResponse } from "@supabase/supabase-js";
 
 import iconPrize from "../assets/icon-prize.svg";
-import iconProfiles from "../assets/icon-profiles.svg";
+import iconProfiles from "../assets/Icon-profiles.svg";
 import iconBalance from "../assets/Icon-balance.svg";
 import entericon from "../assets/icon-gray-enter.svg";
 import carIcon from "../assets/car.svg";
