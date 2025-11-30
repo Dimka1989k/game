@@ -19,6 +19,9 @@ interface AuthContextType {
     email: string,
     password: string
   ) => Promise<{ success: boolean; error?: string }>;
+  updateUsername: (
+    newName: string
+  ) => Promise<{ success: boolean; error?: string }>;
   signOut: () => Promise<void>;
 }
 
@@ -27,13 +30,10 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthContextProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
 
-  const signUpNewUser = async (
-    email: string,
-    password: string,
-    username: string
-  ) => {
+  const signUpNewUser = async (email: string, password: string, username: string) => {
+    
     try {
-      const {  error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email: email.toLowerCase(),
         password,
         options: {
@@ -42,18 +42,30 @@ export function AuthContextProvider({ children }: { children: ReactNode }) {
             display_name: username, 
           },
         },
-      });
+      });     
 
       if (error) {
         return { success: false, error: error.message };
       }
 
-      return { success: true };
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        return { success: false, error: err.message };
+      const user = data.user;
+   
+      if (user) {
+        await supabase.from("profiles").insert({
+          id: user.id,
+          username,
+          balance: 1000, 
+          total_wagered: 0,
+          total_won: 0,
+          games_played: 0,
+        });
       }
-      return { success: false, error: "Unexpected error" };
+
+      return { success: true };
+    } catch (_err: unknown) {
+      const message = _err instanceof Error ? _err.message : "Unexpected error";
+
+      return { success: false, error: message };
     }
   };
 
@@ -66,6 +78,22 @@ export function AuthContextProvider({ children }: { children: ReactNode }) {
     if (error) return { success: false, error: error.message };
     return { success: true };
   };
+
+
+ const updateUsername = async (newName: string) => {
+   const { data, error } = await supabase.auth.updateUser({
+     data: {
+       display_name: newName,
+     },
+   });
+
+   console.log("UPDATE:", data, error);
+
+   if (error) return { success: false, error: error.message };   
+   await supabase.auth.refreshSession();
+
+   return { success: true };
+ };
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -83,7 +111,7 @@ export function AuthContextProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ session, signUpNewUser, signInUser, signOut }}
+      value={{ session, signUpNewUser, signInUser, signOut, updateUsername }}
     >
       {children}
     </AuthContext.Provider>
