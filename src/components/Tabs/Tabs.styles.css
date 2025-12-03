@@ -1,0 +1,54 @@
+.container-btn {
+  display: flex;
+  align-items: center;
+  background-color: var(--bg-logout);
+  border: 1px solid var(--border-blue);
+  width: 100%;
+  max-width: 653px;
+  height: 36px;
+  border-radius: 14px;
+  padding: 4.5px 4px 2.5px;
+  gap: 6px;
+}
+
+.btn-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 14px;
+  width: 90px;
+  height: 29px;
+  gap: 4px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.btn-tab.active {
+  background: linear-gradient(90deg, #155dfc 0%, #9810fa 100%);
+  transform: translateY(-1px);
+}
+
+
+.btn-tab .text {
+  color: var(--black);
+  transition: color 0.25s ease;
+}
+
+
+.btn-tab.active .text {
+  color: var(--white);
+}
+
+.btn-tab img {
+  pointer-events: none;
+}
+
+.text {
+  line-height: 1.4;
+  font-size: 14px;
+  letter-spacing: -0.15px;
+  font-weight: 500;
+  pointer-events: none;
+}

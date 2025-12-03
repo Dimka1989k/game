@@ -1,0 +1,103 @@
+.container-leaderboard {
+  background-color: var(--bg-logout);
+  border: 1px solid var(--border-blue);
+  border-radius: 14px;
+  margin-top: 14px;
+  padding: 24px;
+}
+
+.container-img {
+  display: flex;
+  gap: 12px;
+}
+
+.container-text-leaderboard {
+  margin-bottom: 40px;
+}
+
+.txt-heading {
+  color: var(--white);
+  line-height: 1.5;
+  font-size: 16px;
+  letter-spacing: -0.31px;
+  font-weight: 700;
+}
+
+.txt-heading-small {
+  color: var(--label-text);
+  line-height: 1.25;
+  font-size: 14px;
+  letter-spacing: -0.15px;
+  font-weight: 500;
+}
+
+
+.container-players {
+  display: flex;
+  background-color: var(--bg-players);
+  border-radius: 10px;
+  padding: 12px;
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.rank-index {
+  line-height: 1.5;
+  font-size: 16px;
+  letter-spacing: -0.31px;
+  font-weight: 400;
+  color: var(--text-bottom);
+}
+
+.container-players-name {
+  margin-left: 12px;
+}
+
+.container-players-win {
+  margin-left: auto;
+}
+
+.name-players {
+  color: var(--white);
+  line-height: 1.5;
+  font-size: 16px;
+  letter-spacing: -0.31px;
+  font-weight: 700;
+}
+
+.games {
+  color: var(--label-text);
+  line-height: 1.33;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.win {
+  color: var(--text-gray);
+  line-height: 1.33;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.balance {
+  background: linear-gradient(90deg, #51a2ff 0%, #c27aff 100%),
+    linear-gradient(0deg, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  line-height: 1.5;
+  font-size: 16px;
+  letter-spacing: -0.31px;
+  font-weight: 700;
+}
+
+.rank {
+  text-align: center;
+  margin-top: 57.5px;
+  color: var(--white);
+  line-height: 1.4;
+  font-size: 14px;
+  letter-spacing: -0.15px;
+  font-weight: 500;
+}
+

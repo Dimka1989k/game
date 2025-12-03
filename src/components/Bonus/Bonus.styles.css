@@ -1,0 +1,99 @@
+.container-bonus {
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(
+    135deg,
+    rgba(0, 188, 125, 0.1) 0%,
+    rgba(43, 127, 255, 0.1) 100%
+  );
+  border: 1px solid var(--border-green-color);
+  border-radius: 14px;
+  padding: 24px;
+  height: 415px;
+}
+
+.conatiner-logo {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+
+.container-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.text-out {
+  color: var(--label-text);
+  line-height: 1.4;
+  font-size: 14px;
+  letter-spacing: -0.15px;
+  font-weight: 500;
+}
+
+.container-amount {
+  background-color: var(--dark-two);
+  border-radius: 10px;
+  width: 264px;
+  height: 205px;
+  padding: 16px;
+  margin-top: 40px;
+  margin-bottom: 40px;
+}
+
+.btn-claim {
+  width: 100%;
+  background: linear-gradient(90deg, #009966 0%, #00a63e 100%);
+  padding: 8px 0;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.4;
+  letter-spacing: -0.15px;
+  font-weight: 500;
+  color: var(--white);
+}
+
+.container-claim {
+  display: flex;
+  flex-direction: column;
+}
+
+.container-clock {
+  display: flex;
+  justify-content: space-between;
+}
+
+.text-clock {
+  color: var(--label-text);
+  line-height: 1.5;
+  font-size: 16px;
+  letter-spacing: -0.31px;
+  font-weight: 500;
+}
+
+.time {
+  color: var(--white);
+  line-height: 1.5;
+  font-size: 16px;
+  letter-spacing: -0.31px;
+  font-weight: 700;
+}
+
+.clock {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.green-text {
+  background: linear-gradient(90deg, #00d492 0%, #05df72 100%),
+    linear-gradient(0deg, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0));
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  line-height: 1.5;
+  font-size: 16px;
+  letter-spacing: -0.31px;
+  font-weight: 700;
+}

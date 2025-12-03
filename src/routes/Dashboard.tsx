@@ -2,26 +2,24 @@ import { useNavigate } from "react-router";
 import { useState, useEffect, useRef } from "react";
 import { UserAuth } from "../context/AuthContext";
 import { supabase } from "../supabaseClient";
-import prize1 from "../assets/prize-yellow.svg";
-import prize2 from "../assets/prize-gray.svg";
-import prize3 from "../assets/prize-orange.svg";
+
+import casinoSound from "../assets/sounds/casino1.mp3";
+import carSound from "../assets/sounds/car.mp3"
+import won from "../assets/sounds/won.mp3"
+import gameOver from "../assets/sounds/gameover.mp3";
+
+
+import Tabs from "../components/Tabs/Tabs";
+import Car from "../components/Car/Car";
+import Header from "../components/Header/Header";
+import Bonus from "../components/Bonus/Bonus";
+import Leaderboard from "../components/Leader/LeaderBoard";
+import { useSearchParams } from "react-router";
 
 import type { PostgrestSingleResponse } from "@supabase/supabase-js";
 
-import iconPrize from "../assets/icon-prize.svg";
-import iconProfiles from "../assets/Icon-profiles.svg";
-import iconBalance from "../assets/Icon-balance.svg";
-import entericon from "../assets/icon-gray-enter.svg";
-import carIcon from "../assets/car.svg";
-import iocnBonus from "../assets/icon-bonus.svg";
-import clockIcon from "../assets/clock.svg";
-import roadIcon from "../assets/road.svg";
-import iconClose from "../assets/closeIcon.svg";
-import userIcon from "../assets/userIcon.svg";
-import prize from "../assets/prize-blue.svg";
-import imageMoney from "../assets/truck-money.svg";
-
 import "./Dashboard.styles.css";
+import Cases from "../components/Cases/Cases";
 
 interface Profile {
   id: string;
@@ -106,6 +104,10 @@ export default function Dashboard() {
   const [messageType, setMessageType] = useState<"success" | "error" | null>(
     null
   );
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const carAudioRef = useRef<HTMLAudioElement | null>(null);
+  const winAudioRef = useRef<HTMLAudioElement | null>(null);
+  const loseAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const [isAnimating, setIsAnimating] = useState(false);
   const [betAmount, setBetAmount] = useState("");
@@ -116,8 +118,8 @@ export default function Dashboard() {
   const gameStateRef = useRef<GameState>("idle");
   const activeBetRef = useRef<ActiveBet | null>(null);
   const finalValueRef = useRef<number | null>(null);
-const carRef = useRef<HTMLImageElement | null>(null);
-const roadRef = useRef<HTMLDivElement | null>(null);
+  const carRef = useRef<HTMLImageElement | null>(null);
+  const roadRef = useRef<HTMLDivElement | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
 
@@ -136,6 +138,47 @@ const roadRef = useRef<HTMLDivElement | null>(null);
   const email = session?.user?.email ?? "";
   const displayName = profile?.username || usernameMeta || email || "Player";
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = searchParams.get("tab") === "cases" ? "cases" : "car";
+  const [activeTab, setActiveTab] = useState<"car" | "cases">(initialTab);
+
+  useEffect(() => {  
+    if (!audioRef.current) {
+      audioRef.current = new Audio(casinoSound);
+      audioRef.current.loop = true;
+      audioRef.current.volume = 0.1;
+    }
+
+    if (!carAudioRef.current) {
+      carAudioRef.current = new Audio(carSound);
+      carAudioRef.current.loop = true;
+      carAudioRef.current.volume = 0.5;
+    }
+
+    const music = audioRef.current;
+
+    const startMusic = () => {
+      music.play().catch(() => {});
+      window.removeEventListener("click", startMusic);
+    };
+
+    window.addEventListener("click", startMusic);
+
+    return () => {
+      music.pause();
+      music.currentTime = 0;
+      window.removeEventListener("click", startMusic);
+    };
+  }, []);
+
+  useEffect(() => {
+    winAudioRef.current = new Audio(won);
+    winAudioRef.current.volume = 0.3;
+
+    loseAudioRef.current = new Audio(gameOver);
+    loseAudioRef.current.volume = 0.4;
+  }, []);
 
   useEffect(() => {
     gameStateRef.current = gameState;
@@ -190,9 +233,7 @@ const roadRef = useRef<HTMLDivElement | null>(null);
 
       if (bonusRows) {
         setBonus(normalizeBonus(bonusRows));
-      }
-  
-      else {
+      } else {
         const now = new Date();
 
         const { data: inserted, error: insertError } = await supabase
@@ -248,17 +289,17 @@ const roadRef = useRef<HTMLDivElement | null>(null);
   const handleSave = async () => {
     if (!session?.user || !profile) return;
 
-     if (usernameInput.trim() === profile.username) {
-       setMessage("You haven't changed your username");
-       setMessageType("error");
-       return;
+    if (usernameInput.trim() === profile.username) {
+      setMessage("You haven't changed your username");
+      setMessageType("error");
+      return;
     }
 
     if (usernameInput.trim().length === 0) {
-       setMessage("Username cannot be empty");
-       setMessageType("error");
-       return;
-    }    
+      setMessage("Username cannot be empty");
+      setMessageType("error");
+      return;
+    }
 
     if (usernameInput.trim().length > 20) {
       setMessage("Username must be 20 characters or less");
@@ -379,6 +420,8 @@ const roadRef = useRef<HTMLDivElement | null>(null);
 
     setActiveBet({ amount, hasCashedOut: false });
     setGameState("running");
+    carAudioRef.current?.play().catch(() => {});
+
     setIsAnimating(true);
     if (carRef.current) {
       carRef.current.style.transform = "translateX(0px)";
@@ -397,6 +440,7 @@ const roadRef = useRef<HTMLDivElement | null>(null);
 
       if (finalValueRef.current !== null && cur >= finalValueRef.current) {
         clearInterval(interval);
+        carAudioRef.current?.pause();       
         setIsAnimating(false);
         if (carRef.current) {
           carRef.current.style.transition = "transform 0.3s ease-out";
@@ -414,8 +458,22 @@ const roadRef = useRef<HTMLDivElement | null>(null);
         }
 
         if (cur >= 3.25) {
+          const winSound = winAudioRef.current;
+          if (winSound) {
+            winSound.currentTime = 0;
+            winSound.play().catch(() => {});
+          }
+
           setShowMoney(true);
           setTimeout(() => setShowMoney(false), 1000);
+        }
+        // LOSE
+        else {
+          const loseSound = loseAudioRef.current;
+          if (loseSound) {
+            loseSound.currentTime = 0;
+            loseSound.play().catch(() => {});
+          }
         }
 
         setTimeout(() => {
@@ -442,7 +500,7 @@ const roadRef = useRef<HTMLDivElement | null>(null);
       hasCashedOut: true,
     };
     setActiveBet(activeBetRef.current);
-
+    carAudioRef.current?.pause();  
     setIsAnimating(false);
     setGameState("finished");
 
@@ -459,44 +517,45 @@ const roadRef = useRef<HTMLDivElement | null>(null);
     }, 800);
   };
 
-  const handleClaimBonus = async () => {
-    if (!session?.user || !profile || !bonus) return;
-    if (bonusCountdown > 0) return;
+const handleClaimBonus = async () => {
+  if (!session?.user || !profile || !bonus) return;
+  if (bonusCountdown > 0) return;
 
-    const base = parseFloat(betAmount || "0");
-    const amount =
-      !isNaN(base) && base > 0 ? base : bonus.amount ? bonus.amount : 10;
+  const amount = 10; // 🔥 ФІКСОВАНИЙ БОНУС
 
-    const now = new Date();
-    const nextAt = new Date(now.getTime() + 60_000).toISOString();
+  const now = new Date();
+  const nextAt = new Date(now.getTime() + 60_000).toISOString();
 
-    const { data: updatedProfile } = await supabase
-      .from("profiles")
-      .update({
-        balance: profile.balance + amount,
-        updated_at: now.toISOString(),
-      })
-      .eq("id", session.user.id)
-      .select()
-      .single();
+  // 🔹 Оновлюємо баланс
+  const { data: updatedProfile } = await supabase
+    .from("profiles")
+    .update({
+      balance: profile.balance + amount,
+      updated_at: now.toISOString(),
+    })
+    .eq("id", session.user.id)
+    .select()
+    .single();
 
-    if (updatedProfile) setProfile(normalizeProfile(updatedProfile));
+  if (updatedProfile) setProfile(normalizeProfile(updatedProfile));
 
-    const { data: updatedBonus } = await supabase
-      .from("bonuses")
-      .update({
-        streak: bonus.streak + 1,
-        amount,
-        next_bonus_at: nextAt,
-      })
-      .eq("user_id", session.user.id)
-      .select()
-      .single();
+  // 🔹 Оновлюємо бонус
+  const { data: updatedBonus } = await supabase
+    .from("bonuses")
+    .update({
+      streak: bonus.streak + 1,
+      amount: 10, 
+      next_bonus_at: nextAt,
+    })
+    .eq("user_id", session.user.id)
+    .select()
+    .single();
 
-    if (updatedBonus) setBonus(normalizeBonus(updatedBonus));
-  };
+  if (updatedBonus) setBonus(normalizeBonus(updatedBonus));
+};
 
-  const bonusAmount = bonus?.amount ?? 10;
+
+  const bonusAmount = 10;
 
   const balanceText =
     loadingProfile || !profile ? "$1000.00" : `$${profile.balance.toFixed(2)}`;
@@ -523,334 +582,59 @@ const roadRef = useRef<HTMLDivElement | null>(null);
     loadLeaderboard();
   }, [userId]);
 
-
-  useEffect(() => {
-    if (!carRef.current || !roadRef.current || !isAnimating) return;
-    const roadWidth = roadRef.current.clientWidth;
-    const carWidth = carRef.current.clientWidth;
-
-    const maxDistance = roadWidth - carWidth - 20; 
-    const target = finalValueRef.current || 1;
-
-    const progress = Math.min(crashValue / target, 1);
-    carRef.current.style.transform = `translateX(${progress * maxDistance}px)`;
-    carRef.current.style.transition = "transform 0.05s linear";
-  }, [crashValue, isAnimating]);
+  const handleTabChange = (tab: "car" | "cases") => {
+    setActiveTab(tab);
+    setSearchParams({ tab }); // Оновлює URL
+  };
 
   return (
     <div className="page-wrapper">
-      <header className="header">
-        <div className="header-dashboard">
-          <img src={iconPrize} alt="iconPrize" width="40" height="40" />
-          <div className="container-text">
-            <p className="header-text">Rocket Casino</p>
-            <p className="header-text-small">{displayName}</p>
-          </div>
-          <div className="container-all">
-            <div className="container-balance">
-              <img src={iconBalance} alt="" width="20" height="20" />
-              <p className="text-balance">{balanceText}</p>
-            </div>
-            <div className="img-container">
-              <img
-                src={iconProfiles}
-                alt="settings"
-                width="16"
-                height="16"
-                className="settings"
-                onClick={() => setIsSettingsOpen(true)}
-              />
-              {isSettingsOpen && (
-                <div
-                  className="modal-backdrop"
-                  onClick={() => setIsSettingsOpen(false)}
-                >
-                  <div
-                    className="modal-window"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <button
-                      className="modal-close"
-                      onClick={() => setIsSettingsOpen(false)}
-                    >
-                      <img src={iconClose} alt="close" width="16" height="16" />
-                    </button>
-
-                    <h2 className="txt-profile">Profile Settings</h2>
-                    <p className="modal-text">
-                      Customize your profile and manage your account
-                    </p>
-                    <div className="container-label">
-                      <img src={userIcon} alt="" width="16" height="16" />
-                      <label className="txt-label">Username</label>
-                    </div>
-
-                    <input
-                      type="text"
-                      value={usernameInput}
-                      className="input-modal"
-                      onChange={(e) => setUsernameInput(e.target.value)}
-                    />
-                    {message && (
-                      <p
-                        className={`message-text ${
-                          messageType === "error"
-                            ? "error-text"
-                            : "success-text"
-                        }`}
-                      >
-                        {message}
-                      </p>
-                    )}
-                    <p className="text-char">{usernameInput.length}/20</p>
-                    <p className="text-char">characters</p>
-                    <div className="container-stat">
-                      <p className="text-bal">Account Stats</p>
-                      <div className="balance-container">
-                        <div className="text-info">
-                          <p className="text-bal">Balance</p>
-                          <p className="text-stat">
-                            {profile
-                              ? `$${profile.balance.toFixed(2)}`
-                              : "$1025.54"}
-                          </p>
-                        </div>
-                        <div className="text-info">
-                          <p className="text-bal">Games Played</p>
-                          <p className="text-stat">
-                            {profile ? profile.games_played : 0}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="balance-container">
-                        <div className="text-info">
-                          <p className="text-bal">Total Wagered</p>
-                          <p className="text-stat">
-                            {profile
-                              ? `$${profile.total_wagered.toFixed(2)}`
-                              : "$0.00"}
-                          </p>
-                        </div>
-                        <div className="text-info">
-                          <p className="text-bal">Total Won</p>
-                          <p className="text-stat">
-                            {profile
-                              ? `$${profile.total_won.toFixed(2)}`
-                              : "$0.00"}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="btn-modal-container">
-                      <button className="modal-button" onClick={handleSave}>
-                        Save Changes
-                      </button>
-                      <button
-                        className="red-button"
-                        onClick={() => setUsernameInput("")}
-                      >
-                        Reset Account
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-            <div
-              className="container-logout"
-              onClick={async (e) => {
-                e.preventDefault();
-                await signOut();
-                navigate("/");
-              }}
-            >
-              <img src={entericon} alt="logout" width="16" height="16" />
-              <p className="text-out">Logout</p>
-            </div>
-          </div>
-        </div>
-      </header>
+      <Header
+        displayName={displayName}
+        balanceText={balanceText}
+        isSettingsOpen={isSettingsOpen}
+        setIsSettingsOpen={setIsSettingsOpen}
+        usernameInput={usernameInput}
+        setUsernameInput={setUsernameInput}
+        message={message}
+        messageType={messageType}
+        profile={profile}
+        handleSave={handleSave}
+        signOut={signOut}
+        navigate={navigate}
+      />
       <main className="container-game">
         <div className="container-display">
-          <div className="container-btn">
-            <div className="btn-car">
-              <img src={carIcon} alt="car" width="32" height="14" />
-              <p className="text">Car</p>
-            </div>
-          </div>
-          <div className="container-car">
-            <div
-              className="container-black"
-              style={{ position: "relative" }}
-              ref={roadRef}
-            >
-              <div className="container-balance-win">
-                <p
-                  className="balance-win"
-                  style={{
-                    color:
-                      crashValue === 0.0 || isAnimating
-                        ? "#fff"
-                        : activeBetRef.current?.hasCashedOut
-                        ? "#19DD57"
-                        : crashValue >= 3.25
-                        ? "#19DD57"
-                        : "#D4183D",
-                  }}
-                >
-                  {crashValue.toFixed(2)}
-                </p>
-              </div>
-              <img
-                src={carIcon}
-                alt="car"
-                width="259"
-                height="116"
-                className="car"
-                ref={carRef}
-              />
-              <div className="container-balance-win">
-                {showMoney && (
-                  <img
-                    src={imageMoney}
-                    alt="money"
-                    width="300"
-                    height="200"
-                    className="money-fly"
-                  />
-                )}
-              </div>
-              <img src={roadIcon} alt="road" />
-            </div>
-            <div className="container-info">
-              <p className="txt-info">Bet Amount</p>
-              <div className="container-start">
-                <input
-                  type="text"
-                  className="input-price"
-                  value={betAmount}
-                  onChange={(e) => setBetAmount(e.target.value)}
-                />
-                <button
-                  className="btn-start"
-                  style={{
-                    background:
-                      gameState === "cashable"
-                        ? "linear-gradient(90deg, #00A63E 0%, #009966 100%)"
-                        : "var(--bg-btn-start)",
-                  }}
-                  onClick={() => {
-                    if (gameState === "idle") handleStart();
-                    if (gameState === "cashable") handleCashOut(liveCashout);
-                  }}
-                >
-                  {gameState === "cashable" ? "Cash Out" : "Start"}
-                </button>
-              </div>
-              <div className="container-button">
-                {["10", "50", "100", "500"].map((v) => (
-                  <button
-                    key={v}
-                    className="btn-betting"
-                    onClick={() => setBetAmount(v)}
-                  >
-                    ${v}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
+          <Tabs activeTab={activeTab} setActiveTab={handleTabChange} />
+          {activeTab === "car" && (
+            <Car
+              betAmount={betAmount}
+              setBetAmount={setBetAmount}
+              gameState={gameState}
+              handleStart={handleStart}
+              handleCashOut={handleCashOut}
+              crashValue={crashValue}
+              liveCashout={liveCashout}
+              finalValueRef={finalValueRef}
+              hasCashedOut={activeBetRef.current?.hasCashedOut ?? false}
+              showMoney={showMoney}
+              carRef={carRef}
+              roadRef={roadRef}
+              isAnimating={isAnimating}
+            />
+          )}
+          {activeTab === "cases" && (
+            <Cases profile={profile} setProfile={setProfile} userId={userId} />
+          )}
         </div>
         <div className="container-bonus-leaderboard">
-          <div className="container-bonus">
-            <div className="conatiner-logo">
-              <img src={iocnBonus} alt="" width="40" height="40" />
-              <div className="container-text">
-                <p className="header-text">Claim Bonus</p>
-                <p className="text-out">Free money every minute</p>
-              </div>
-            </div>
-            <div className="container-amount">
-              <div className="container-claim">
-                <div className="container-clock">
-                  <p className="text-clock">Next claim:</p>
-                  <div className="clock">
-                    <img src={clockIcon} alt="" width="16" height="16" />
-                    <p className="time">{formatTime(bonusCountdown)}</p>
-                  </div>
-                </div>
-                <div className="container-clock">
-                  <p className="text-clock">Amount:</p>
-                  <p className="green-text">${bonusAmount.toFixed(2)}</p>
-                </div>
-              </div>
-            </div>
-            <button
-              className="btn-claim"
-              disabled={bonusCountdown > 0}
-              onClick={handleClaimBonus}
-              style={{
-                opacity: bonusCountdown > 0 ? 0.6 : 1,
-                cursor: bonusCountdown > 0 ? "not-allowed" : "pointer",
-              }}
-            >
-              {bonusCountdown > 0 ? "Wait..." : "Claim Now!"}
-            </button>
-          </div>
-          <div className="container-leaderboard">
-            <div className="container-img">
-              <img src={prize} alt="" width="40" height="40" />
-              <div className="container-text-leaderboard">
-                <p className="txt-heading">Leaderboard</p>
-                <p className="txt-heading-small">Top players</p>
-              </div>
-            </div>
-            {leaders.map((p, index) => {
-              const icon =
-                index === 0
-                  ? prize1
-                  : index === 1
-                  ? prize2
-                  : index === 2
-                  ? prize3
-                  : null;
-              return (
-                <div
-                  key={p.id}
-                  className="container-players"
-                  style={{
-                    background:
-                      p.id === userId
-                        ? "linear-gradient(90deg, rgba(43, 127, 255, 0.2) 0%, rgba(173, 70, 255, 0.2) 100%)"
-                        : "",
-                    border: p.id === userId ? "1px solid #2B7FFF80" : "",
-                  }}
-                >
-                  {icon ? (
-                    <img src={icon} />
-                  ) : (
-                    <p className="rank-index">#{index + 1}</p>
-                  )}
-                  <div className="conatiner-players-name">
-                    <p className="name-players">{p.username}</p>
-                    <p className="games">{p.games_played} games</p>
-                  </div>
-                  <div className="conatiner-players-win">
-                    <p className="balance">${Math.floor(p.total_won)}</p>
-                    <p className="win">
-                      {p.games_played > 0
-                        ? Math.round(
-                            (p.total_won / (p.games_played * 1000)) * 100
-                          )
-                        : 0}
-                      % win
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
-            <p className="rank">Your rank: {yourRank ? `#${yourRank}` : "—"}</p>
-          </div>
+          <Bonus
+            bonusCountdown={bonusCountdown}
+            bonusAmount={bonusAmount}
+            onClaim={handleClaimBonus}
+            formatTime={formatTime}
+          />
+          <Leaderboard leaders={leaders} yourRank={yourRank} userId={userId} />
         </div>
       </main>
     </div>

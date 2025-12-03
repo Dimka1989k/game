@@ -1,0 +1,147 @@
+.container-car {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-rocket);
+  width: 653px;
+  border-radius: 14px;
+  border: 1px solid var(--border-blue);
+  margin-top: 24px;
+  padding: 24px;
+}
+
+.container-black {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background-color: var(--bg-car);
+  width: 100%;
+  max-width: 603px;
+  height: 317px;
+  border-radius: 6px;
+}
+
+.container-balance-win {
+  display: flex;
+  justify-content: center;
+}
+
+.balance-win {
+  font-family: "Bai Jamjuree", sans-serif;
+  font-weight: 700; 
+  color: var(--white);
+  font-size: 65px;
+  text-transform: uppercase;
+}
+
+.car {
+  display: flex;
+  justify-content: start;
+  margin-top: 80px;
+}
+
+.money-fly {
+  position: absolute;
+  top: 40px;
+  left: 155px;
+  animation: moneyUp 1s ease-out forwards;
+}
+
+@keyframes moneyUp {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(40px);
+  }
+}
+
+.container-info {
+  display: flex;
+  flex-direction: column;
+  justify-content: start;
+  align-items: start;
+}
+
+.txt-info {
+  color: var(--label-text);
+  line-height: 1.5;
+  font-size: 16px;
+  letter-spacing: -0.31px;
+  font-weight: 500;
+  margin-top: 16.5px;
+  margin-bottom: 8.5px;
+}
+
+.container-start {
+  display: flex;
+  width: 100%;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.input-price {
+  background-color: var(--dark-input);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--label-text);
+  line-height: 1.4;
+  font-size: 14px;
+  letter-spacing: -0.15px;
+  font-weight: 400;
+  padding: 8px 12px;
+  width: 100%;
+  max-width: 293px;
+}
+
+.input-price:focus {
+  outline: none;
+}
+
+.input::placeholder {
+  color: var(--label-text);
+  line-height: 1.4;
+  font-size: 14px;
+  letter-spacing: -0.15px;
+  font-weight: 400;
+}
+
+.btn-start {
+  background-color: var(--bg-btn-start);
+  border-radius: 8px;
+  border: none;
+  color: var(--white);
+  font-size: 14px;
+  line-height: 1.4;
+  letter-spacing: -0.15px;
+  font-weight: 500;
+  width: 100%;
+  max-width: 293px;
+  padding: 8px 0;
+  cursor: pointer;
+}
+
+.container-button {
+  display: flex;
+  width: 100%;
+  gap: 8px;
+}
+
+.btn-betting {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--dark-two);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  width: 100%;
+  max-width: 144px;
+  padding: 9.5px 0 8.5px 0;
+  font-size: 14px;
+  line-height: 1.4;
+  letter-spacing: -0.15px;
+  font-weight: 500;
+  color: var(--white-btn);
+  cursor: pointer;
+}
