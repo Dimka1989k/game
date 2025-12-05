@@ -1,52 +1,29 @@
-import { useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router";
-import { UserAuth } from "../../context/AuthContext";
+import { Link } from "react-router";
 import "../Login/SignIn.styles.css";
 
 import iconRocket from "../../assets/rocket.svg";
 import enterIcon from "../../assets/enter-icon.svg";
 
+import { useSignUp } from "../hooks/useSignUp";
+
 export default function SignUp() {
-  const [email, setEmail] = useState("");
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
-
-  const { signUpNewUser } = UserAuth();
-
-  const handleSignUp = async (e: FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
-
-    if (!username.trim() || !email.trim() || !password.trim()) {
-      setError("Please enter username, email and password");
-      setTimeout(() => setError(null), 3000);
-      return;
-    }
-
-    try {
-      const result = await signUpNewUser(email, password, username);
-
-      if (result.success) {
-        navigate("/dashboard");
-      } else {
-        setError(result.error || "Registration failed");
-      }
-    } catch {
-      setError("An unexpected error occurred.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const {
+    email,
+    username,
+    password,
+    error,
+    loading,
+    setEmail,
+    setUsername,
+    setPassword,
+    handleSignUp,
+  } = useSignUp();
 
   return (
     <div className="container">
       <form onSubmit={handleSignUp} className="form">
         <div className="form-img">
-          <img src={iconRocket} alt="rocket" width="64px" height="64px" />
+          <img src={iconRocket} alt="rocket" width="64" height="64" />
         </div>
 
         <div className="container-input">
@@ -58,6 +35,7 @@ export default function SignUp() {
             className="input"
             type="text"
             placeholder="Enter username"
+            value={username}
             onChange={(e) => setUsername(e.target.value)}
           />
 
@@ -66,6 +44,7 @@ export default function SignUp() {
             className="input"
             type="email"
             placeholder="Enter email"
+            value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
 
@@ -74,12 +53,15 @@ export default function SignUp() {
             className="input"
             type="password"
             placeholder="Enter password"
+            value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
+
           {error && <p className="error-text">{error}</p>}
+
           <button className="btn-login" disabled={loading}>
-            <img src={enterIcon} alt="enterIcon" width="16px" height="16px" />
-            <p className="text-btn">Register</p>
+            <img src={enterIcon} alt="enter" width="16" height="16" />
+            <p className="text-btn">{loading ? "Loading..." : "Register"}</p>
           </button>
         </div>
 
@@ -90,10 +72,7 @@ export default function SignUp() {
         </div>
 
         <div className="line"></div>
-
-        <p className="text-bottom">
-          Your account data is stored locally in your browser
-        </p>
+        <p className="text-bottom">Your account data is stored locally in your browser</p>
       </form>
     </div>
   );

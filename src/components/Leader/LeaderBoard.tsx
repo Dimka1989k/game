@@ -22,7 +22,9 @@ export default function LeaderBoard({
   leaders,
   yourRank,
   userId,
-}: LeaderboardProps) {
+}: LeaderboardProps) { 
+  const rankIcons = [prize1, prize2, prize3];
+
   return (
     <div className="container-leaderboard">
       <div className="container-img">
@@ -33,26 +35,20 @@ export default function LeaderBoard({
         </div>
       </div>
 
-      {leaders.map((p, index) => {
-        const icon =
-          index === 0
-            ? prize1
-            : index === 1
-            ? prize2
-            : index === 2
-            ? prize3
-            : null;
+      {leaders.map((leader, index) => {
+        const icon = rankIcons[index] ?? null;
+
+        const isCurrentUser = leader.id === userId;
 
         return (
           <div
-            key={p.id}
+            key={leader.id}
             className="container-players"
             style={{
-              background:
-                p.id === userId
-                  ? "linear-gradient(90deg, rgba(43, 127, 255, 0.2) 0%, rgba(173, 70, 255, 0.2) 100%)"
-                  : "",
-              border: p.id === userId ? "1px solid #2B7FFF80" : "",
+              background: isCurrentUser
+                ? "linear-gradient(90deg, rgba(43, 127, 255, 0.2) 0%, rgba(173, 70, 255, 0.2) 100%)"
+                : "",
+              border: isCurrentUser ? "1px solid #2B7FFF80" : "",
             }}
           >
             {icon ? (
@@ -62,15 +58,17 @@ export default function LeaderBoard({
             )}
 
             <div className="container-players-name">
-              <p className="name-players">{p.username}</p>
-              <p className="games">{p.games_played} games</p>
+              <p className="name-players">{leader.username}</p>
+              <p className="games">{leader.games_played} games</p>
             </div>
 
             <div className="container-players-win">
-              <p className="balance">${Math.floor(p.total_won)}</p>
+              <p className="balance">${Math.floor(leader.total_won)}</p>
               <p className="win">
-                {p.games_played > 0
-                  ? Math.round((p.total_won / (p.games_played * 1000)) * 100)
+                {leader.games_played > 0
+                  ? Math.round(
+                      (leader.total_won / (leader.games_played * 1000)) * 100
+                    )
                   : 0}
                 % win
               </p>

@@ -1,26 +1,26 @@
+import { GameTab } from "../../types/tabs.types";
 import carIcon from "../../assets/car.svg";
 import "./Tabs.styles.css";
 import Emoji from "../Emoji";
 
 interface TabsProps {
-  activeTab: "car" | "cases";
-  setActiveTab: (tab: "car" | "cases") => void;
+  activeTab: GameTab;
+  setActiveTab: (tab: GameTab) => void;
 }
-
 
 export default function Tabs({ activeTab, setActiveTab }: TabsProps) {
   return (
     <div className="container-btn">
       <button
-        className={`btn-tab ${activeTab === "car" ? "active" : ""}`}
-        onClick={() => setActiveTab("car")}
+        className={`btn-tab ${activeTab === GameTab.Car ? "active" : ""}`}
+        onClick={() => setActiveTab(GameTab.Car)}
       >
         <img src={carIcon} alt="car" width="32" height="14" />
         <p className="text">Car</p>
       </button>
       <button
-        className={`btn-tab ${activeTab === "cases" ? "active" : ""}`}
-        onClick={() => setActiveTab("cases")}
+        className={`btn-tab ${activeTab === GameTab.Cases ? "active" : ""}`}
+        onClick={() => setActiveTab(GameTab.Cases)}
       >
         <p className="text">
           <Emoji char="📦" size={22} /> Cases

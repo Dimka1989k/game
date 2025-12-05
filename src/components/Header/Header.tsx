@@ -5,6 +5,9 @@ import entericon from "../../assets/icon-gray-enter.svg";
 import iconClose from "../../assets/closeIcon.svg";
 import userIcon from "../../assets/userIcon.svg";
 
+import { formatMoney } from "../../utils/formatMoney";
+import { StatBlock } from "./StatBlock";
+
 import "./Header.styles.css";
 
 interface HeaderProps {
@@ -43,6 +46,32 @@ export default function Header({
   signOut,
   navigate,
 }: HeaderProps) {
+  const statsRows = [
+    [
+      {
+        label: "Balance",
+        value: profile ? formatMoney(profile.balance) : "$1025.54",
+      },
+      { label: "Games Played", value: profile ? profile.games_played : 0 },
+    ],
+    [
+      {
+        label: "Total Wagered",
+        value: profile ? formatMoney(profile.total_wagered) : "$0.00",
+      },
+      {
+        label: "Total Won",
+        value: profile ? formatMoney(profile.total_won) : "$0.00",
+      },
+    ],
+  ];
+
+  async function handleLogout(e: React.MouseEvent<HTMLDivElement>) {
+    e.preventDefault();
+    await signOut();
+    navigate("/");
+  }
+
   return (
     <header className="header">
       <div className="header-dashboard">
@@ -109,40 +138,9 @@ export default function Header({
                   <p className="text-char">characters</p>
                   <div className="container-stat">
                     <p className="text-bal">Account Stats</p>
-                    <div className="balance-container">
-                      <div className="text-info">
-                        <p className="text-bal">Balance</p>
-                        <p className="text-stat">
-                          {profile
-                            ? `$${profile.balance.toFixed(2)}`
-                            : "$1025.54"}
-                        </p>
-                      </div>
-                      <div className="text-info">
-                        <p className="text-bal">Games Played</p>
-                        <p className="text-stat">
-                          {profile ? profile.games_played : 0}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="balance-container">
-                      <div className="text-info">
-                        <p className="text-bal">Total Wagered</p>
-                        <p className="text-stat">
-                          {profile
-                            ? `$${profile.total_wagered.toFixed(2)}`
-                            : "$0.00"}
-                        </p>
-                      </div>
-                      <div className="text-info">
-                        <p className="text-bal">Total Won</p>
-                        <p className="text-stat">
-                          {profile
-                            ? `$${profile.total_won.toFixed(2)}`
-                            : "$0.00"}
-                        </p>
-                      </div>
-                    </div>
+                    {statsRows.map((row, index) => (
+                      <StatBlock items={row} key={index} />
+                    ))}
                   </div>
                   <div className="btn-modal-container">
                     <button className="modal-button" onClick={handleSave}>
@@ -159,14 +157,7 @@ export default function Header({
               </div>
             )}
           </div>
-          <div
-            className="container-logout"
-            onClick={async (e) => {
-              e.preventDefault();
-              await signOut();
-              navigate("/");
-            }}
-          >
+          <div className="container-logout" onClick={handleLogout}>
             <img src={entericon} alt="logout" width="16" height="16" />
             <p className="text-out">Logout</p>
           </div>

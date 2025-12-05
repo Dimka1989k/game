@@ -73,14 +73,13 @@
 
 .disabled-case {
   pointer-events: none;
-  cursor: default !important;
+  cursor: default;
 }
 
-/* Заборонити hover, коли disabled */
 .disabled-case:hover {
-  transform: none !important;
-  border-color: inherit !important;
-  background: inherit !important;
+  transform: none ;
+  border-color: inherit;
+  background: inherit;
 }
 
 .container-carousel {
