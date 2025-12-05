@@ -3,6 +3,8 @@ import { useEffect, useRef } from "react";
 import iconBonus from "../../assets/icon-bonus.svg";
 import clockIcon from "../../assets/clock.svg";
 
+import { formatMoney } from "../../utils/formatMoney";
+
 import buttonSounds from "../../assets/sounds/button.mp3"
 
 interface BonusProps {
@@ -36,6 +38,12 @@ export default function Bonus({
     }
   };
 
+   const handleClaimClick = () => {
+    if (bonusCountdown > 0) return;
+    playButtonSound();
+    onClaim();
+  };
+
 
   return (
     <div className="container-bonus">
@@ -51,25 +59,20 @@ export default function Bonus({
           <div className="container-clock">
             <p className="text-clock">Next claim:</p>
             <div className="clock">
-              <img src={clockIcon} alt="" width="16" height="16" />
+              <img src={clockIcon} alt="clockIcon" width="16" height="16" />
               <p className="time">{formatTime(bonusCountdown)}</p>
             </div>
           </div>
           <div className="container-clock">
             <p className="text-clock">Amount:</p>
-            <p className="green-text">${bonusAmount.toFixed(2)}</p>
+            <p className="green-text">{formatMoney(bonusAmount)}</p>
           </div>
         </div>
       </div>
       <button
         className="btn-claim"
         disabled={bonusCountdown > 0}
-        onClick={() => {
-          if (bonusCountdown <= 0) {
-            playButtonSound(); 
-            onClaim();
-          }
-        }}
+       onClick={handleClaimClick}
         style={{
           opacity: bonusCountdown > 0 ? 0.6 : 1,
           cursor: bonusCountdown > 0 ? "not-allowed" : "pointer",

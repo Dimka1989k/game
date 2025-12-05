@@ -1,47 +1,60 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "../../supabaseClient";
 import iconRocket from "../../assets/rocket.svg";
 import { Link } from "react-router";
 
-import "../Login/SignIn.styles.css"
+import "../Login/SignIn.styles.css";
 
 export default function UpdatePassword() {
   const [newPassword, setNewPassword] = useState("");
   const [message, setMessage] = useState("");
-   const [error, setError] = useState<string | null>(null);
- 
-  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const timeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      if (!data.session) {
-        setMessage("Invalid or expired link.");
-      }
-      setLoading(false);
+      if (!data.session) setMessage("Invalid or expired link.");
+      setIsLoading(false);
     });
+
+    return () => {
+     
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
   }, []);
+
+  const showError = (msg: string) => {
+    setError(msg);   
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+
+    timeoutRef.current = window.setTimeout(() => {
+      setError(null);
+      timeoutRef.current = null;
+    }, 3000);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-      if (!newPassword.trim()) {
-        setError("Please enter new password");
-        setTimeout(() => setError(null), 3000);
-        return;
-      }
+    if (!newPassword.trim()) {
+      showError("Please enter new password");
+      return;
+    }
 
     const { error } = await supabase.auth.updateUser({
       password: newPassword,
     });
 
     if (error) {
-      setMessage(error.message);
+      showError(error.message);
     } else {
       setMessage("Password updated successfully. You can log in now.");
     }
   };
 
-  if (loading) return <p>Loading...</p>;
+  if (isLoading) return <p>Loading...</p>;
 
   return (
     <div className="container">

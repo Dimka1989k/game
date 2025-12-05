@@ -3,13 +3,17 @@ import carIcon from "../../assets/car.svg";
 import roadIcon from "../../assets/road.svg";
 import imageMoney from "../../assets/truck-money.svg";
 
+import { GameState } from "../../types/GameState";
+
+import { formatMoney } from "../../utils/formatMoney";
+
 
 import "./Car.styles.css";
 
 interface Props {
   betAmount: string;
   setBetAmount: (v: string) => void;
-  gameState: "idle" | "running" | "cashable" | "finished";
+  gameState: GameState;
   handleStart: () => void;
   handleCashOut: (val: number) => void;
   crashValue: number;
@@ -47,9 +51,29 @@ export default function Car({
     const progress = Math.min(crashValue / target, 1);
     carRef.current.style.transform = `translateX(${progress * maxDistance}px)`;
     carRef.current.style.transition = "transform 0.05s linear";
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+ 
   }, [crashValue, isAnimating]);
+
+
+  const valueColor = (() => {
+  if (crashValue === 0.0 || isAnimating) return "#fff";
+  if (hasCashedOut) return "#19DD57";
+  if (crashValue >= 3.25) return "#19DD57";
+  return "#D4183D";
+})();
+
+
+const handleButtonClick = () => {
+  if (gameState === GameState.Idle) {
+    handleStart();
+    return;
+  }
+
+  if (gameState === GameState.Cashable) {
+    handleCashOut(liveCashout);
+    return;
+  }
+};
 
   return (
     <div className="container-car">
@@ -61,18 +85,9 @@ export default function Car({
         <div className="container-balance-win">
           <p
             className="balance-win"
-            style={{
-              color:
-                crashValue === 0.0 || isAnimating
-                  ? "#fff"
-                  : hasCashedOut
-                  ? "#19DD57"
-                  : crashValue >= 3.25
-                  ? "#19DD57"
-                  : "#D4183D",
-            }}
+           style={{ color: valueColor }}
           >
-            {crashValue.toFixed(2)}
+            {formatMoney(crashValue)}
           </p>
         </div>
         <img
@@ -115,10 +130,7 @@ export default function Car({
                   ? "linear-gradient(90deg, #00A63E 0%, #009966 100%)"
                   : "var(--bg-btn-start)",
             }}
-            onClick={() => {
-              if (gameState === "idle") handleStart();
-              if (gameState === "cashable") handleCashOut(liveCashout);
-            }}
+            onClick={handleButtonClick}
           >
             {gameState === "cashable" ? "Cash Out" : "Start"}
           </button>
