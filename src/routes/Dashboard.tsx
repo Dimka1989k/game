@@ -17,6 +17,7 @@ import Header from "../components/Header/Header";
 import Bonus from "../components/Bonus/Bonus";
 import Leaderboard from "../components/Leader/LeaderBoard";
 import Cases from "../components/Cases/Cases";
+import Mines from "../components/Mines/Mines";
 import { useSearchParams } from "react-router";
 
 import type { PostgrestSingleResponse } from "@supabase/supabase-js";
@@ -80,10 +81,18 @@ export default function Dashboard() {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialTab = searchParams.get("tab") === "cases" ? "cases" : "car";
-  const [activeTab, setActiveTab] = useState<GameTab>(
-    initialTab === "cases" ? GameTab.Cases : GameTab.Car
-  );
+
+  const getInitialTab = (): GameTab => {
+    const tab = searchParams.get("tab");
+
+    if (tab === GameTab.Car) return GameTab.Car;
+    if (tab === GameTab.Cases) return GameTab.Cases;
+    if (tab === GameTab.Mines) return GameTab.Mines;
+
+    return GameTab.Car;
+  };
+
+  const [activeTab, setActiveTab] = useState<GameTab>(getInitialTab);
 
   useEffect(() => {
     if (!audioRef.current) {
@@ -570,6 +579,26 @@ export default function Dashboard() {
           )}
           {activeTab === "cases" && (
             <Cases profile={profile} setProfile={setProfile} userId={userId} />
+          )}
+          {activeTab === "mines" && (
+            <Mines
+              betAmount={betAmount}
+              setBetAmount={setBetAmount}
+              onStartGame={(bet) => {
+                void applyBetResult({
+                  amount: bet, 
+                  isCashOut: false,
+                  isWin: false,
+                });
+              }}
+              onCashOut={(amount) => {
+                void applyBetResult({
+                  amount, 
+                  isCashOut: true,
+                  isWin: true,
+                });
+              }}
+            />
           )}
         </div>
         <div className="container-bonus-leaderboard">

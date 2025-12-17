@@ -13,6 +13,7 @@ export const router = createBrowserRouter([
   { path: "/signin", element: <SignIn /> },
   { path: "/reset", element: <ResetRequest /> },
   { path: "/update", element: <UpdatePassword /> },
+  { path: "/mines", element: <UpdatePassword /> },
   {
     path: "/dashboard",
     element: (

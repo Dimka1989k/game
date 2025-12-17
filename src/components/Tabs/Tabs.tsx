@@ -26,6 +26,14 @@ export default function Tabs({ activeTab, setActiveTab }: TabsProps) {
           <Emoji char="📦" size={22} /> Cases
         </p>
       </button>
+      <button
+        className={`btn-tab ${activeTab === GameTab.Mines ? "active" : ""}`}
+        onClick={() => setActiveTab(GameTab.Mines)}
+      >
+        <p className="text">
+          <Emoji char="💣" size={22} /> Mines
+        </p>
+      </button>
     </div>
   );
 }
