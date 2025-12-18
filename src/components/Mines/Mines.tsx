@@ -63,6 +63,7 @@ export default function Mines({
       : 1;
 
   const isStartDisabled = isFinished;
+  const isStartLocked = isFinished;
 
   function handleStartGame() {
     if (bet <= 0) return;
@@ -155,7 +156,8 @@ export default function Mines({
               <Emoji char="🎉" size={24} /> Cashed out successfully!
             </p>
             <p className="paragraph-text">
-              Won: <span className="text-container">
+              Won:{" "}
+              <span className="text-container">
                 {formatMoney(cashOutValue)}
               </span>
             </p>
@@ -208,9 +210,9 @@ export default function Mines({
             ))}
           </div>
           <button
-            className={`btn-mines ${
-              isRunning ? "cashout-pulse" : ""
-            }`}
+            className={`btn-mines
+                       ${isRunning ? "cashout-pulse" : ""}
+                      ${isStartLocked ? "btn-mines-disabled" : ""}`}
             disabled={isStartDisabled}
             style={
               isRunning

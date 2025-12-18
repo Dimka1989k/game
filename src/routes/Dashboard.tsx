@@ -36,7 +36,7 @@ export default function Dashboard() {
   const { session, signOut, updateUsername } = UserAuth();
   const navigate = useNavigate();
   const userId = session?.user?.id ?? null;
-  const resetTimeoutRef = useRef<number | null>(null);
+
   const cashoutTimeoutRef = useRef<number | null>(null);
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -51,7 +51,7 @@ export default function Dashboard() {
   const loseAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const [isAnimating, setIsAnimating] = useState(false);
-  const [betAmount, setBetAmount] = useState("");
+  const [betAmount, setBetAmount] = useState("10");
   const [crashValue, setCrashValue] = useState(0.0);
   const [showMoney, setShowMoney] = useState(false);
   const [gameState, setGameState] = useState<GameState>(GameState.Idle);
@@ -356,98 +356,57 @@ export default function Dashboard() {
     }
   };
 
-  const handleStart = () => {
-    if (gameState !== GameState.Idle || !session?.user || !profile) return;
-
-    const amount = parseFloat(betAmount);
-    if (isNaN(amount) || amount <= 0 || amount > profile.balance) return;
-
-    const finalCrash = +(Math.random() * (6.5 - 0.2) + 0.2).toFixed(2);
-    finalValueRef.current = finalCrash;
-
-    void supabase
-      .from("crash_rounds")
-      .insert({ result_multiplier: finalCrash });
-
-    setActiveBet({ amount, hasCashedOut: false });
-    setGameState(GameState.Running);
-    carAudioRef.current?.play().catch(() => {});
-
-    setIsAnimating(true);
-    if (carRef.current) {
-      carRef.current.style.transform = "translateX(0px)";
-      carRef.current.style.transition = "none";
-    }
-    setCrashValue(0);
-
-    let cur = 0;
-    const interval = setInterval(() => {
-      cur = +(cur + 0.01).toFixed(2);
-      setCrashValue(cur);
-
-      if (cur >= 0.5 && gameStateRef.current === GameState.Running) {
-        setGameState(GameState.Cashable);
-      }
-
-      if (finalValueRef.current !== null && cur >= finalValueRef.current) {
-        clearInterval(interval);
-        carAudioRef.current?.pause();
-        setIsAnimating(false);
-        if (carRef.current) {
-          carRef.current.style.transition = "transform 0.3s ease-out";
-        }
-        setGameState(GameState.Finished);
-
-        if (activeBetRef.current && !activeBetRef.current.hasCashedOut) {
-          const isWin = finalCrash >= 3.25;
-
-          void applyBetResult({
-            amount: activeBetRef.current.amount,
-            isCashOut: false,
-            isWin,
-          });
-        }
-
-        if (cur >= 3.25) {
-          const winSound = winAudioRef.current;
-          if (winSound) {
-            winSound.currentTime = 0;
-            winSound.play().catch(() => {});
-          }
-
-          setShowMoney(true);
-          setTimeout(() => setShowMoney(false), 1000);
-        } else {
-          const loseSound = loseAudioRef.current;
-          if (loseSound) {
-            loseSound.currentTime = 0;
-            loseSound.play().catch(() => {});
-          }
-        }
-
-        if (resetTimeoutRef.current) {
-          clearTimeout(resetTimeoutRef.current);
-        }
-
-        resetTimeoutRef.current = window.setTimeout(() => {
-          setCrashValue(0);
-          setGameState(GameState.Idle);
-          setActiveBet(null);
-          finalValueRef.current = null;
-        }, 900);
-      }
-    }, 8);
-    intervalRef.current = interval;
+  const generateCrashPoint = () => {
+    return +(Math.random() * 4.95 + 1.05).toFixed(2);
   };
 
-  const handleCashOut = (cashoutAmount: number) => {
-    if (!activeBet || gameState === GameState.Finished) return;
 
+  const generateSpeed = () => {    
+    return Math.random() * 0.06 + 0.06;
+  };
+
+const handleStart = () => {
+  if (gameState !== GameState.Idle || !profile) return;
+
+  const amount = Number(betAmount);
+  if (!amount || amount <= 0 || profile.balance < amount) return;
+
+  if (carRef.current) {
+    carRef.current.style.transform = "translateX(0px)";
+  }
+
+  const bet: ActiveBet = {
+    amount,
+    hasCashedOut: false,
+  };
+
+  setActiveBet(bet);
+  activeBetRef.current = bet;
+
+  setCrashValue(0);
+  setShowMoney(false);
+
+  finalValueRef.current = generateCrashPoint();
+
+  const speed = generateSpeed();
+
+  setGameState(GameState.Cashable);
+  setIsAnimating(true);
+
+  carAudioRef.current?.play().catch(() => {});
+
+  intervalRef.current = window.setInterval(() => {
+    setCrashValue((prev) => +(prev + speed).toFixed(2));
+  }, 50);
+};
+
+  const handleCashOut = (cashoutAmount: number) => {
+    if (!activeBet || gameState !== GameState.Cashable) return;
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
-
+   
     activeBetRef.current = {
       ...activeBet,
       hasCashedOut: true,
@@ -463,6 +422,14 @@ export default function Dashboard() {
       isWin: true,
     });
 
+    if (winAudioRef.current) {
+      winAudioRef.current.currentTime = 0;
+      winAudioRef.current.play().catch(() => {});
+    }
+
+    setShowMoney(true);
+    setTimeout(() => setShowMoney(false), 1000);
+  
     if (cashoutTimeoutRef.current) {
       clearTimeout(cashoutTimeoutRef.current);
     }
@@ -473,6 +440,45 @@ export default function Dashboard() {
       setActiveBet(null);
     }, 800);
   };
+
+  const handleCrash = () => {
+    if (gameState === GameState.Finished) return;
+
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+
+    activeBetRef.current = {
+      ...activeBetRef.current!,
+      hasCashedOut: false,
+    };
+    setActiveBet(activeBetRef.current);
+
+    carAudioRef.current?.pause();
+    setIsAnimating(false);
+    setGameState(GameState.Finished);
+
+    void applyBetResult({
+      amount: Number(betAmount),
+      isCashOut: false,
+      isWin: false,
+    });
+
+
+    if (loseAudioRef.current) {
+      loseAudioRef.current.currentTime = 0;
+      loseAudioRef.current.play().catch(() => {});
+    }
+
+    setTimeout(() => {
+      setCrashValue(0);
+      setGameState(GameState.Idle);
+      setActiveBet(null);
+    }, 800);
+  };
+
+
 
   const handleClaimBonus = async () => {
     if (!session?.user || !profile || !bonus) return;
@@ -575,6 +581,7 @@ export default function Dashboard() {
               carRef={carRef}
               roadRef={roadRef}
               isAnimating={isAnimating}
+              handleCrash={handleCrash}
             />
           )}
           {activeTab === "cases" && (

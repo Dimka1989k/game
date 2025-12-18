@@ -56,19 +56,22 @@
   box-sizing: border-box;
 }
 
-html {
-  height: 100%; 
-  overflow-x: hidden;  
-
-
+html {  
+   min-height: 100dvh;
  
-
 }
 
 body {  
   margin: 0;
-  padding: 0; 
-  overflow-x: hidden;  
+  padding: 0;  
+  min-height: 100vh;
+         background: linear-gradient(
+    135deg,
+    #0f172b 0%,
+    rgba(0, 79, 59, 0.4) 30%,
+    #59168b 100%
+  ); 
+ 
 }
 
 .no-scroll {
