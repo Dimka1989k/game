@@ -13,7 +13,9 @@ import snakeIcon from "../../assets/cases/animal/shake.png";
 import dinoIcon from "../../assets/cases/animal/dino.png";
 import crownIcon from "../../assets/cases/animal/crown.png";
 
-export const casesData = {
+import type { CaseType, CaseItem } from "../../types/cases.types";
+
+export const casesData: Record<CaseType, CaseItem[]> = {
   animal: [
     { icon: ratIcon, label: "Rat" },
     { icon: rabittIcon, label: "Rabbit" },

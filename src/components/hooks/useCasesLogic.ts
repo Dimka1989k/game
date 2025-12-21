@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from "react";
-import { supabase } from "../../supabaseClient";
 import { casesData } from "../Cases/casesData";
 import { CASE_PRICES, PAYOUTS, type CaseType } from "../Cases/cases.config";
 import carouselSounds from "../../assets/sounds/carousel1.mp3";
@@ -13,14 +12,17 @@ export interface Profile {
   games_played: number;
 }
 
+import type { CaseItem, Rarity } from "../../types/cases.types";
+
 export function useCasesLogic(
   profile: Profile | null,
   setProfile: React.Dispatch<React.SetStateAction<Profile | null>>,
-  userId: string | null
+  userId: string | null,
+  onFinish?: (reward: number) => void
 ) {
   const [selectedCase, setSelectedCase] = useState<CaseType>("animal");
   const [isOpening, setIsOpening] = useState(false);
-  const [rolledItem, setRolledItem] = useState<any>(null);
+  const [rolledItem, setRolledItem] = useState<CaseItem | null>(null);
 
   const trackRef = useRef<HTMLDivElement | null>(null);
   const currentXRef = useRef(0);
@@ -35,14 +37,14 @@ export function useCasesLogic(
     carouselSoundRef.current.volume = 0.4;
   }, []);
 
-  function getRarityByIndex(index: number) {
-    if (index < 5) return "common";
-    if (index < 8) return "uncommon";
-    if (index < 10) return "rare";
-    if (index < 12) return "epic";
-    if (index < 13) return "legendary";
-    return "gold";
-  }
+ function getRarityByIndex(index: number): Rarity {
+   if (index < 5) return "common";
+   if (index < 8) return "uncommon";
+   if (index < 10) return "rare";
+   if (index < 12) return "epic";
+   if (index < 13) return "legendary";
+   return "gold";
+ }
 
   function getRarityClass(rarity: string) {
     return {
@@ -123,6 +125,11 @@ export function useCasesLogic(
       alert("Not enough balance!");
       return;
     }
+    
+    setProfile({
+      ...profile,
+      balance: profile.balance - price,
+    });
 
     setIsOpening(true);
     setRolledItem(null);
@@ -132,29 +139,14 @@ export function useCasesLogic(
       snd.currentTime = 0;
       snd.play().catch(() => {});
     }
-
-    const updatedBalance = profile.balance - price;
-
-    const { data: updatedProfile } = await supabase
-      .from("profiles")
-      .update({ balance: updatedBalance })
-      .eq("id", userId)
-      .select()
-      .single();
-
-    if (updatedProfile) setProfile(updatedProfile);
-
-    // ---- SPIN ----
     const items = casesData[selectedCase];
     const randomIndex = Math.floor(Math.random() * items.length);
-
     const itemWidth = 146;
     const centerOffset = 603 / 2 - 130 / 2;
-
     const startX = 0;
     const endX = -(25 * itemWidth + randomIndex * itemWidth) + centerOffset;
 
-    animateSlider(startX, endX, async () => {
+    animateSlider(startX, endX, () => {
       const sndStop = carouselSoundRef.current;
       if (sndStop) {
         sndStop.pause();
@@ -163,22 +155,15 @@ export function useCasesLogic(
 
       const finalIndex = getCenteredItemIndex();
       const item = items[finalIndex];
-
       setRolledItem(item);
 
       const rarity = getRarityByIndex(finalIndex);
       const reward = PAYOUTS[rarity];
-
-      const newBalance = updatedBalance + reward;
-
-      const { data: profAfterWin } = await supabase
-        .from("profiles")
-        .update({ balance: newBalance })
-        .eq("id", userId)
-        .select()
-        .single();
-
-      if (profAfterWin) setProfile(profAfterWin);
+   
+      onFinish?.(reward);   
+      setProfile((prev) =>
+        prev ? { ...prev, balance: prev.balance + reward } : prev
+      );
 
       setIsOpening(false);
     });

@@ -16,6 +16,7 @@ import { formatMoney } from "../../utils/formatMoney";
 import { useMinesGame } from "../hooks/useMinesGame";
 import { useMinesSounds } from "../hooks/useMinesSounds";
 import { calculateCashOut, calculateMultiplier } from "../../utils/minesMath";
+import { parseBetAmount } from "../../utils/parseBetAmount";
 
 interface Props {
   betAmount: string;
@@ -30,7 +31,7 @@ export default function Mines({
   onStartGame,
   onCashOut,
 }: Props) {
-  const bet = Number(betAmount) || 0;
+  const bet = parseBetAmount(betAmount, { min: 1 });
 
   const [minesCount, setMinesCount] = useState(3);
 
@@ -48,7 +49,7 @@ export default function Mines({
 
   const { playWin, playLose } = useMinesSounds(winSound, loseSound);
 
-  const cashOutValue = calculateCashOut(bet, multiplier);
+  const cashOutValue = bet !== null ? calculateCashOut(bet, multiplier) : 0;
 
   const MINES_OPTIONS = [1, 3, 5, 10, 24];
   const BET_PRESETS = ["10", "50", "100", "500"];
@@ -66,7 +67,7 @@ export default function Mines({
   const isStartLocked = isFinished;
 
   function handleStartGame() {
-    if (bet <= 0) return;
+    if (bet === null) return;
     onStartGame(bet);
     start();
   }

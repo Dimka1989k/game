@@ -1,8 +1,8 @@
-import { useNavigate } from "react-router";
-import { useState, useEffect, useRef } from "react";
+import { useNavigate, useSearchParams } from "react-router";
+import { useEffect, useRef, useState } from "react";
 import { UserAuth } from "../context/AuthContext";
-import { supabase } from "../supabaseClient";
 import { GameState } from "../types/GameState";
+
 import casinoSound from "../assets/sounds/casino1.mp3";
 import carSound from "../assets/sounds/car.mp3";
 import won from "../assets/sounds/won.mp3";
@@ -10,6 +10,7 @@ import gameOver from "../assets/sounds/gameover.mp3";
 
 import { GameTab } from "../types/tabs.types";
 import { formatMoney } from "../utils/formatMoney";
+import { parseBetAmount } from "../utils/parseBetAmount";
 
 import Tabs from "../components/Tabs/Tabs";
 import Car from "../components/Car/Car";
@@ -18,40 +19,46 @@ import Bonus from "../components/Bonus/Bonus";
 import Leaderboard from "../components/Leader/LeaderBoard";
 import Cases from "../components/Cases/Cases";
 import Mines from "../components/Mines/Mines";
-import { useSearchParams } from "react-router";
 
-import type { PostgrestSingleResponse } from "@supabase/supabase-js";
+import type { ActiveBet } from "../types/bet.types";
+import { formatTime } from "../utils/formatTime";
+
+import { useGameAudio } from "../components/hooks/useGameAudio";
+import { useProfileManagement } from "../components/hooks/useProfileManagement";
+import { useBonusSystem } from "../components/hooks/useBonusSystem";
 
 import "./Dashboard.styles.css";
 
-import type { Profile, ProfileRow } from "../types/profile.types";
-import type { BonusData } from "../types/bonus.types";
-import type { Leader } from "../types/leader.types";
-import type { ActiveBet } from "../types/bet.types";
-
-import { normalizeProfile, normalizeBonus } from "../utils/normalize";
-import { formatTime } from "../utils/formatTime";
-
 export default function Dashboard() {
-  const { session, signOut, updateUsername } = UserAuth();
+  const { session: rawSession, signOut, updateUsername } = UserAuth();
+  const session = rawSession ?? null;
   const navigate = useNavigate();
-  const userId = session?.user?.id ?? null;
 
   const cashoutTimeoutRef = useRef<number | null>(null);
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [usernameInput, setUsernameInput] = useState("");
-  const [message, setMessage] = useState<string | null>(null);
-  const [messageType, setMessageType] = useState<"success" | "error" | null>(
-    null
-  );
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const carAudioRef = useRef<HTMLAudioElement | null>(null);
-  const winAudioRef = useRef<HTMLAudioElement | null>(null);
-  const loseAudioRef = useRef<HTMLAudioElement | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { carAudioRef, winAudioRef, loseAudioRef } = useGameAudio({
+    casinoSound,
+    carSound,
+    winSound: won,
+    loseSound: gameOver,
+  });
 
   const [isAnimating, setIsAnimating] = useState(false);
-  const [betAmount, setBetAmount] = useState("10");
+
+  const [betAmounts, setBetAmounts] = useState({
+    car: "10",
+    mines: "10",
+  });
+
+  const setBet = (tab: "car" | "mines", value: string) => {
+    setBetAmounts((prev) => ({
+      ...prev,
+      [tab]: value,
+    }));
+  };
+
   const [crashValue, setCrashValue] = useState(0.0);
   const [showMoney, setShowMoney] = useState(false);
   const [gameState, setGameState] = useState<GameState>(GameState.Idle);
@@ -59,26 +66,51 @@ export default function Dashboard() {
   const gameStateRef = useRef<GameState>(GameState.Idle);
   const activeBetRef = useRef<ActiveBet | null>(null);
   const finalValueRef = useRef<number | null>(null);
+
   const carRef = useRef<HTMLImageElement | null>(null);
   const roadRef = useRef<HTMLDivElement | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [loadingProfile, setLoadingProfile] = useState(true);
-
-  const [bonus, setBonus] = useState<BonusData | null>(null);
-  const [bonusCountdown, setBonusCountdown] = useState(0);
 
   const [activeBet, setActiveBet] = useState<ActiveBet | null>(null);
-
-  const [leaders, setLeaders] = useState<Leader[]>([]);
-  const [yourRank, setYourRank] = useState<number | null>(null);
 
   const meta = session?.user?.user_metadata as Record<string, unknown> | null;
   const usernameMeta =
     typeof meta?.display_name === "string" ? meta.display_name : "";
-
   const email = session?.user?.email ?? "";
-  const displayName = profile?.username || usernameMeta || email || "Player";
+
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const {
+    userId,
+    profile,
+    setProfile,
+    loadingProfile,
+    leaders,
+    yourRank,
+    usernameInput,
+    setUsernameInput,
+    message,
+    messageType,
+    setMessage,
+    setMessageType,
+    handleSave,
+    applyBetResult,
+  } = useProfileManagement({
+    session,
+    usernameMeta,
+    email,
+    updateUsername,
+  });
+
+ 
+  const { bonusCountdown, handleClaimBonus } = useBonusSystem({
+    session,
+    profile,
+    setProfile,
+  });
+
+  const BONUS_AMOUNT = 10;
+
+  const displayName = profile?.username || usernameMeta || email || "Player";
 
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -95,43 +127,6 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<GameTab>(getInitialTab);
 
   useEffect(() => {
-    if (!audioRef.current) {
-      audioRef.current = new Audio(casinoSound);
-      audioRef.current.loop = true;
-      audioRef.current.volume = 0.1;
-    }
-
-    if (!carAudioRef.current) {
-      carAudioRef.current = new Audio(carSound);
-      carAudioRef.current.loop = true;
-      carAudioRef.current.volume = 0.5;
-    }
-
-    const music = audioRef.current;
-
-    const startMusic = () => {
-      music.play().catch(() => {});
-      window.removeEventListener("click", startMusic);
-    };
-
-    window.addEventListener("click", startMusic);
-
-    return () => {
-      music.pause();
-      music.currentTime = 0;
-      window.removeEventListener("click", startMusic);
-    };
-  }, []);
-
-  useEffect(() => {
-    winAudioRef.current = new Audio(won);
-    winAudioRef.current.volume = 0.3;
-
-    loseAudioRef.current = new Audio(gameOver);
-    loseAudioRef.current.volume = 0.4;
-  }, []);
-
-  useEffect(() => {
     gameStateRef.current = gameState;
   }, [gameState]);
 
@@ -139,279 +134,70 @@ export default function Dashboard() {
     activeBetRef.current = activeBet;
   }, [activeBet]);
 
-  useEffect(() => {
-    if (!userId) return;
-
-    const load = async () => {
-      setLoadingProfile(true);
-      const {
-        data: profileRow,
-        error: profileError,
-      }: PostgrestSingleResponse<ProfileRow> = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", userId)
-        .single();
-
-      if (profileError && profileError.code === "PGRST116") {
-        const { data: newRow } = await supabase
-          .from("profiles")
-          .insert({
-            id: userId,
-            username: usernameMeta || email.split("@")[0],
-            balance: 1000,
-            total_wagered: 0,
-            total_won: 0,
-            games_played: 0,
-          })
-          .select()
-          .single();
-
-        if (newRow) setProfile(normalizeProfile(newRow));
-      } else if (profileRow) {
-        setProfile(normalizeProfile(profileRow));
-      }
-
-      const { data: bonusRows, error: bonusError } = await supabase
-        .from("bonuses")
-        .select("*")
-        .eq("user_id", userId)
-        .maybeSingle();
-
-      if (bonusError) {
-        console.log("BONUS ERROR:", bonusError);
-      }
-
-      if (bonusRows) {
-        setBonus(normalizeBonus(bonusRows));
-      } else {
-        const now = new Date();
-
-        const { data: inserted, error: insertError } = await supabase
-          .from("bonuses")
-          .insert({
-            user_id: userId,
-            streak: 0,
-            next_bonus_at: now.toISOString(),
-            amount: 10,
-          })
-          .select()
-          .single();
-
-        if (insertError) {
-          console.error("BONUS INSERT ERROR:", insertError);
-        }
-
-        if (inserted) {
-          setBonus(normalizeBonus(inserted));
-        }
-      }
-      setLoadingProfile(false);
-    };
-
-    void load();
-  }, [userId, usernameMeta, email]);
-
-  useEffect(() => {
-    if (profile?.username) {
-      setUsernameInput(profile.username);
-    }
-  }, [profile]);
-
-  useEffect(() => {
-    if (!bonus) return;
-
-    const i = setInterval(() => {
-      if (!bonus.next_bonus_at) {
-        setBonusCountdown(0);
-        return;
-      }
-
-      const now = Date.now();
-      const next = new Date(bonus.next_bonus_at).getTime();
-      const diff = Math.max(0, Math.ceil((next - now) / 1000));
-
-      setBonusCountdown(diff);
-    }, 1000);
-
-    return () => clearInterval(i);
-  }, [bonus]);
-
-  const handleSave = async () => {
-    if (!session?.user || !profile) return;
-
-    if (usernameInput.trim() === profile.username) {
-      setMessage("You haven't changed your username");
-      setMessageType("error");
-      return;
-    }
-
-    if (usernameInput.trim().length === 0) {
-      setMessage("Username cannot be empty");
-      setMessageType("error");
-      return;
-    }
-
-    if (usernameInput.trim().length > 20) {
-      setMessage("Username must be 20 characters or less");
-      setMessageType("error");
-      return;
-    }
-
-    const result = await updateUsername(usernameInput.trim());
-    if (!result.success) {
-      setMessage(result.error || "Something went wrong");
-      setMessageType("error");
-      return;
-    }
-
-    const { data } = await supabase
-      .from("profiles")
-      .update({ username: usernameInput.trim() })
-      .eq("id", session.user.id)
-      .select()
-      .single();
-
-    if (data) setProfile(normalizeProfile(data));
-
-    setMessage("Username updated!");
-    setMessageType("success");
-    setTimeout(() => setMessage(null), 2500);
-  };
-
-  const applyBetResult = async (params: {
-    amount: number;
-    isCashOut: boolean;
-    isWin: boolean;
-  }) => {
-    if (!session?.user || !profile) return;
-
-    let profit = 0;
-
-    if (params.isCashOut) {
-      profit = params.amount;
-    } else {
-      profit = params.isWin ? params.amount : -params.amount;
-    }
-
-    const updatedBalance = profile.balance + profit;
-
-    await supabase.from("bets").insert({
-      user_id: session.user.id,
-      amount: params.amount,
-      profit: profit,
-      cashed_out_at: params.isCashOut ? Date.now() : 0,
-      result_multiplier: finalValueRef.current ?? crashValue,
-    });
-
-    const { data } = await supabase
-      .from("profiles")
-      .update({
-        balance: updatedBalance,
-        total_wagered: profile.total_wagered + params.amount,
-        total_won: profit > 0 ? profile.total_won + profit : profile.total_won,
-        games_played: profile.games_played + 1,
-      })
-      .eq("id", session.user.id)
-      .select()
-      .single();
-
-    if (data) setProfile(normalizeProfile(data));
-
-    const { data: existingProfile } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("id", session.user.id)
-      .single();
-
-    if (!existingProfile) {
-      console.error("Profile does not exist — cannot update leaderboard");
-      return;
-    }
-
-    await supabase.from("leaderboard").upsert({
-      user_id: session.user.id,
-      username: profile.username,
-      games_played: profile.games_played,
-      total_won: profile.total_won,
-      win_rate:
-        profile.games_played > 0
-          ? Math.round(
-              (profile.total_won / (profile.games_played * 1000)) * 100
-            )
-          : 0,
-    });
-
-    const { data: leaderboardRows } = await supabase
-      .from("profiles")
-      .select("id, username, games_played, total_won")
-      .order("total_won", { ascending: false })
-      .limit(8);
-
-    if (leaderboardRows) {
-      setLeaders(leaderboardRows);
-
-      const rank = leaderboardRows.findIndex((p) => p.id === userId);
-      setYourRank(rank === -1 ? null : rank + 1);
-    }
-  };
-
   const generateCrashPoint = () => {
     return +(Math.random() * 4.95 + 1.05).toFixed(2);
   };
 
-
-  const generateSpeed = () => {    
+  const generateSpeed = () => {
     return Math.random() * 0.06 + 0.06;
   };
 
-const handleStart = () => {
-  if (gameState !== GameState.Idle || !profile) return;
+  const handleStart = () => {
+    if (gameState !== GameState.Idle || !profile) return;
 
-  const amount = Number(betAmount);
-  if (!amount || amount <= 0 || profile.balance < amount) return;
+    const amount = parseBetAmount(betAmounts.car, {
+      min: 1,
+      max: profile.balance,
+    });
 
-  if (carRef.current) {
-    carRef.current.style.transform = "translateX(0px)";
-  }
+    if (amount === null) {
+      setMessage("Invalid bet amount");
+      setMessageType("error");
+      return;
+    }
 
-  const bet: ActiveBet = {
-    amount,
-    hasCashedOut: false,
+    if (carRef.current) {
+      carRef.current.style.transform = "translateX(0px)";
+    }
+
+    const bet: ActiveBet = {
+      amount,
+      hasCashedOut: false,
+    };
+
+    setActiveBet(bet);
+    activeBetRef.current = bet;
+
+    setCrashValue(0);
+    setShowMoney(false);
+
+    finalValueRef.current = generateCrashPoint();
+    const speed = generateSpeed();
+
+    setGameState(GameState.Cashable);
+    setIsAnimating(true);
+
+    carAudioRef.current?.play().catch(() => {});
+
+    intervalRef.current = window.setInterval(() => {
+      setCrashValue((prev) => +(prev + speed).toFixed(2));
+    }, 50);
   };
-
-  setActiveBet(bet);
-  activeBetRef.current = bet;
-
-  setCrashValue(0);
-  setShowMoney(false);
-
-  finalValueRef.current = generateCrashPoint();
-
-  const speed = generateSpeed();
-
-  setGameState(GameState.Cashable);
-  setIsAnimating(true);
-
-  carAudioRef.current?.play().catch(() => {});
-
-  intervalRef.current = window.setInterval(() => {
-    setCrashValue((prev) => +(prev + speed).toFixed(2));
-  }, 50);
-};
 
   const handleCashOut = (cashoutAmount: number) => {
     if (!activeBet || gameState !== GameState.Cashable) return;
+
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
-   
+
     activeBetRef.current = {
       ...activeBet,
       hasCashedOut: true,
     };
     setActiveBet(activeBetRef.current);
+
     carAudioRef.current?.pause();
     setIsAnimating(false);
     setGameState(GameState.Finished);
@@ -420,6 +206,7 @@ const handleStart = () => {
       amount: cashoutAmount,
       isCashOut: true,
       isWin: true,
+      resultMultiplier: finalValueRef.current ?? crashValue,
     });
 
     if (winAudioRef.current) {
@@ -428,8 +215,14 @@ const handleStart = () => {
     }
 
     setShowMoney(true);
-    setTimeout(() => setShowMoney(false), 1000);
-  
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    timeoutRef.current = setTimeout(() => {
+      setShowMoney(false);
+    }, 1000);
+
     if (cashoutTimeoutRef.current) {
       clearTimeout(cashoutTimeoutRef.current);
     }
@@ -449,8 +242,11 @@ const handleStart = () => {
       intervalRef.current = null;
     }
 
+    const bet = activeBetRef.current?.amount;
+    if (!bet) return;
+
     activeBetRef.current = {
-      ...activeBetRef.current!,
+      amount: bet,
       hasCashedOut: false,
     };
     setActiveBet(activeBetRef.current);
@@ -460,62 +256,24 @@ const handleStart = () => {
     setGameState(GameState.Finished);
 
     void applyBetResult({
-      amount: Number(betAmount),
+      amount: bet,
       isCashOut: false,
       isWin: false,
+      resultMultiplier: finalValueRef.current ?? crashValue,
     });
 
+    loseAudioRef.current?.play().catch(() => {});
 
-    if (loseAudioRef.current) {
-      loseAudioRef.current.currentTime = 0;
-      loseAudioRef.current.play().catch(() => {});
-    }
+   if (cashoutTimeoutRef.current) {
+     clearTimeout(cashoutTimeoutRef.current);
+   }
 
-    setTimeout(() => {
-      setCrashValue(0);
-      setGameState(GameState.Idle);
-      setActiveBet(null);
-    }, 800);
+   cashoutTimeoutRef.current = window.setTimeout(() => {
+     setCrashValue(0);
+     setGameState(GameState.Idle);
+     setActiveBet(null);
+   }, 800);
   };
-
-
-
-  const handleClaimBonus = async () => {
-    if (!session?.user || !profile || !bonus) return;
-    if (bonusCountdown > 0) return;
-
-    const amount = 10;
-
-    const now = new Date();
-    const nextAt = new Date(now.getTime() + 60_000).toISOString();
-
-    const { data: updatedProfile } = await supabase
-      .from("profiles")
-      .update({
-        balance: profile.balance + amount,
-        updated_at: now.toISOString(),
-      })
-      .eq("id", session.user.id)
-      .select()
-      .single();
-
-    if (updatedProfile) setProfile(normalizeProfile(updatedProfile));
-
-    const { data: updatedBonus } = await supabase
-      .from("bonuses")
-      .update({
-        streak: bonus.streak + 1,
-        amount: 10,
-        next_bonus_at: nextAt,
-      })
-      .eq("user_id", session.user.id)
-      .select()
-      .single();
-
-    if (updatedBonus) setBonus(normalizeBonus(updatedBonus));
-  };
-
-  const bonusAmount = 10;
 
   const balanceText =
     loadingProfile || !profile ? "$1000.00" : formatMoney(profile.balance);
@@ -524,28 +282,20 @@ const handleStart = () => {
     ? +(activeBet.amount * crashValue * 0.9).toFixed(2)
     : 0;
 
-  useEffect(() => {
-    const loadLeaderboard = async () => {
-      const { data: leaderboardRows } = await supabase
-        .from("profiles")
-        .select("id, username, games_played, total_won")
-        .order("total_won", { ascending: false })
-        .limit(8);
-
-      if (leaderboardRows) {
-        setLeaders(leaderboardRows);
-        const rank = leaderboardRows.findIndex((p) => p.id === userId);
-        setYourRank(rank === -1 ? null : rank + 1);
-      }
-    };
-
-    loadLeaderboard();
-  }, [userId]);
-
   const handleTabChange = (tab: GameTab) => {
     setActiveTab(tab);
     setSearchParams({ tab });
   };
+
+
+  useEffect(() => {
+    return () => {
+      if (cashoutTimeoutRef.current) {
+        clearTimeout(cashoutTimeoutRef.current);
+        cashoutTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   return (
     <div className="page-wrapper">
@@ -568,8 +318,8 @@ const handleStart = () => {
           <Tabs activeTab={activeTab} setActiveTab={handleTabChange} />
           {activeTab === "car" && (
             <Car
-              betAmount={betAmount}
-              setBetAmount={setBetAmount}
+              betAmount={betAmounts.car}
+              setBetAmount={(v) => setBet("car", v)}
               gameState={gameState}
               handleStart={handleStart}
               handleCashOut={handleCashOut}
@@ -584,25 +334,32 @@ const handleStart = () => {
               handleCrash={handleCrash}
             />
           )}
+
           {activeTab === "cases" && (
-            <Cases profile={profile} setProfile={setProfile} userId={userId} />
+            <Cases
+              profile={profile}
+              setProfile={setProfile}
+              userId={userId}             
+            />
           )}
           {activeTab === "mines" && (
             <Mines
-              betAmount={betAmount}
-              setBetAmount={setBetAmount}
-              onStartGame={(bet) => {
+              betAmount={betAmounts.mines}
+              setBetAmount={(v) => setBet("mines", v)}
+              onStartGame={(bet: number) => {
                 void applyBetResult({
-                  amount: bet, 
+                  amount: bet,
                   isCashOut: false,
                   isWin: false,
+                  resultMultiplier: finalValueRef.current ?? crashValue,
                 });
               }}
-              onCashOut={(amount) => {
+              onCashOut={(amount: number) => {
                 void applyBetResult({
-                  amount, 
+                  amount,
                   isCashOut: true,
                   isWin: true,
+                  resultMultiplier: finalValueRef.current ?? crashValue,
                 });
               }}
             />
@@ -611,7 +368,7 @@ const handleStart = () => {
         <div className="container-bonus-leaderboard">
           <Bonus
             bonusCountdown={bonusCountdown}
-            bonusAmount={bonusAmount}
+            bonusAmount={BONUS_AMOUNT}
             onClaim={handleClaimBonus}
             formatTime={formatTime}
           />
