@@ -1,9 +1,7 @@
 import Emoji from "../Emoji";
 import { casesData } from "./casesData";
-
 import iconGray from "../../assets/cases/iconGray.svg";
 import whiteIcon from "../../assets/cases/whiteIcon.svg";
-
 import {
   CASE_PRICES,
   PAYOUTS,
@@ -11,47 +9,42 @@ import {
   CASE_LABELS,
   type CaseType,
 } from "./cases.config";
-
 import { useCasesLogic, type Profile } from "../hooks/useCasesLogic";
-
 import "./Cases.syles.css";
 
 interface CasesProps {
   profile: Profile | null;
   setProfile: React.Dispatch<React.SetStateAction<Profile | null>>;
   userId: string | null;
+  onFinish?: (reward: number) => void;
 }
 
-export default function Cases({ profile, setProfile, userId }: CasesProps) {
-  const {
-    selectedCase,
-    setSelectedCase,
-    isOpening,
-    rolledItem,
-    trackRef,
-    openCase,
-    getRarityByIndex,
-    getRarityClass,
-    resetRoll
-  } = useCasesLogic(profile, setProfile, userId);
+export default function Cases({ profile, setProfile, userId, onFinish }: CasesProps) {
+ const {
+   selectedCase,
+   setSelectedCase,
+   isOpening,
+   rolledItem,
+   trackRef,
+   openCase,
+   getRarityByIndex,
+   getRarityClass,
+   resetRoll,
+ } = useCasesLogic(profile, setProfile, userId, onFinish);
 
   function handleSelectCase(caseType: CaseType) {
-  if (!isOpening) {
-    setSelectedCase(caseType);   
-    if (rolledItem) {     
-      resetRoll();
+    if (!isOpening) {
+      setSelectedCase(caseType);
+      if (rolledItem) resetRoll();
     }
   }
-}
 
-  const renderCarousel = () => {
-    const items = casesData[selectedCase];
-
-    return Array.from({ length: 120 }).map((_, i) => {
+  const renderCarousel = () =>
+    Array.from({ length: 120 }).map((_, i) => {
+      const items = casesData[selectedCase];
       const idx = i % items.length;
       const item = items[idx];
       const rarity = getRarityByIndex(idx);
-
       const cssClass = getRarityClass(rarity);
       const isEmoji = item.icon.length <= 3;
 
@@ -66,11 +59,10 @@ export default function Cases({ profile, setProfile, userId }: CasesProps) {
         </div>
       );
     });
-  };
 
   return (
     <div className="container-cases">
-      <p className="text-cases">Select a Case</p>    
+      <p className="text-cases">Select a Case</p>
       <div className="container-cases-img">
         {(Object.keys(CASE_PRICES) as CaseType[]).map((caseType) => (
           <div
@@ -116,8 +108,7 @@ export default function Cases({ profile, setProfile, userId }: CasesProps) {
             ? "Opening..."
             : `Open Case - $${CASE_PRICES[selectedCase]}`}
         </span>
-      </button>
-      {!rolledItem && <p className="text-cases">Case Contents</p>}
+      </button>     
       <div className="container-emodji">
         {rolledItem ? (
           <div
@@ -159,47 +150,6 @@ export default function Cases({ profile, setProfile, userId }: CasesProps) {
             );
           })
         )}
-      </div>
-      <div className="container-rarity">
-        <p className="text-rarity">Rarity Guide</p>
-        <div className="container-pocent-all">
-          <div className="container-procent">
-            <div className="container-procent-info">
-              <div className="circle-gray"></div>
-              <p className="txt">Common</p>
-              <p className="txt-procent">(55%)</p>
-            </div>
-            <div className="container-procent-info">
-              <div className="circle-violet"></div>
-              <p className="txt">Epic</p>
-              <p className="txt-procent">(5%)</p>
-            </div>
-          </div>
-          <div className="container-procent">
-            <div className="container-procent-info">
-              <div className="circle-green"></div>
-              <p className="txt">Uncommon</p>
-              <p className="txt-procent">(25%)</p>
-            </div>
-            <div className="container-procent-info">
-              <div className="circle-red"></div>
-              <p className="txt">Legendary</p>
-              <p className="txt-procent">(2.5%)</p>
-            </div>
-          </div>
-          <div className="container-procent">
-            <div className="container-procent-info">
-              <div className="circle-blue"></div>
-              <p className="txt">Rare</p>
-              <p className="txt-procent">(12%)</p>
-            </div>
-            <div className="container-procent-info">
-              <div className="circle-gold"></div>
-              <p className="txt">Gold</p>
-              <p className="txt-procent">(0.5%)</p>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );

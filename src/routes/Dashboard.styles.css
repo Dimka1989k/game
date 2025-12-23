@@ -1,10 +1,4 @@
-.page-wrapper {
-  background: linear-gradient(
-    135deg,
-    #0f172b 0%,
-    rgba(0, 79, 59, 0.4) 30%,
-    #59168b 100%
-  );
+.page-wrapper {  
   padding-bottom: 24px;
 }
 
@@ -21,8 +15,9 @@
 
 .container-game {
   display: flex;
-  margin: 0 139px;
+  justify-content: center; 
   margin-top: 20px;
+  gap: 30px;
 }
 
 .container-display {
@@ -33,7 +28,7 @@
 .container-bonus-leaderboard {
   display: flex;
   flex-direction: column;
-  margin-left: auto;
+
 }
 
 .message-text {

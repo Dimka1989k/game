@@ -5,9 +5,6 @@ import imageMoney from "../../assets/truck-money.svg";
 
 import { GameState } from "../../types/GameState";
 
-import { formatMoney } from "../../utils/formatMoney";
-
-
 import "./Car.styles.css";
 
 interface Props {
@@ -24,7 +21,9 @@ interface Props {
   carRef: React.RefObject<HTMLImageElement | null>;
   roadRef: React.RefObject<HTMLDivElement | null>;
   isAnimating: boolean;
+  handleCrash: () => void;
 }
+
 
 export default function Car({
   betAmount,
@@ -40,40 +39,40 @@ export default function Car({
   carRef,
   roadRef,
   isAnimating,
-}: Props) {
+  handleCrash,
+}: Props) { 
   
   useEffect(() => {
     if (!carRef.current || !roadRef.current || !isAnimating) return;
     const roadWidth = roadRef.current.clientWidth;
     const carWidth = carRef.current.clientWidth;
-    const maxDistance = roadWidth - carWidth - 20;
+    const maxDistance = roadWidth - carWidth;
     const target = finalValueRef.current || 1;
     const progress = Math.min(crashValue / target, 1);
     carRef.current.style.transform = `translateX(${progress * maxDistance}px)`;
     carRef.current.style.transition = "transform 0.05s linear";
- 
-  }, [crashValue, isAnimating]);
-
+    
+   if (progress >= 1 && gameState === GameState.Cashable) {
+     handleCrash();
+   }
+  }, [crashValue, isAnimating, gameState]);
 
   const valueColor = (() => {
-  if (crashValue === 0.0 || isAnimating) return "#fff";
-  if (hasCashedOut) return "#19DD57";
-  if (crashValue >= 3.25) return "#19DD57";
-  return "#D4183D";
-})();
+    if (gameState !== GameState.Finished) return "#fff";
+    return hasCashedOut ? "#19DD57" : "#D4183D";
+  })();
 
+  const handleButtonClick = () => {
+    if (gameState === GameState.Idle) {
+      handleStart();
+      return;
+    }
 
-const handleButtonClick = () => {
-  if (gameState === GameState.Idle) {
-    handleStart();
-    return;
-  }
-
-  if (gameState === GameState.Cashable) {
-    handleCashOut(liveCashout);
-    return;
-  }
-};
+    if (gameState === GameState.Cashable) {
+      handleCashOut(liveCashout);
+      return;
+    }
+  };
 
   return (
     <div className="container-car">
@@ -83,11 +82,8 @@ const handleButtonClick = () => {
         style={{ position: "relative" }}
       >
         <div className="container-balance-win">
-          <p
-            className="balance-win"
-           style={{ color: valueColor }}
-          >
-            {formatMoney(crashValue)}
+          <p className="balance-win" style={{ color: valueColor }}>
+            {crashValue.toFixed(2)}
           </p>
         </div>
         <img
@@ -126,24 +122,26 @@ const handleButtonClick = () => {
             className="btn-start"
             style={{
               background:
-                gameState === "cashable"
+                gameState === GameState.Cashable
                   ? "linear-gradient(90deg, #00A63E 0%, #009966 100%)"
                   : "var(--bg-btn-start)",
             }}
             onClick={handleButtonClick}
+            disabled={gameState === GameState.Finished}
           >
-            {gameState === "cashable" ? "Cash Out" : "Start"}
+            {gameState === GameState.Cashable ? "Cash Out" : "Start"}
           </button>
         </div>
 
         <div className="container-button">
-          {["10", "50", "100", "500"].map((v) => (
+          {["10", "50", "100", "500"].map((preset) => (
             <button
-              key={v}
+              key={preset}
               className="btn-betting"
-              onClick={() => setBetAmount(v)}
+              onClick={() => setBetAmount(preset)}
+              disabled={gameState !== GameState.Idle}
             >
-              ${v}
+              ${preset}
             </button>
           ))}
         </div>

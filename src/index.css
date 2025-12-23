@@ -13,6 +13,7 @@
   --dark: rgba(29, 41, 61, 0.8);
   --dark-input: rgba(29, 41, 61, 0.8);
   --dark-two: #0F172B50;
+  --container-mines: #0F172B50;
   --black: #0F172B;
   --email-text: #717182;
   --input-color: #0F172B;
@@ -39,6 +40,14 @@
   --border-cases: #AD46FF4D;
   --text-green: #05DF72;
   --border-emoji: #45556C80; 
+  --bg-mines-current: #0F172B80;
+  --text-color-multiplier: #C27AFF;
+  --text-color-settings: #E2E8F0;
+  --text-safe: #8EC5FF;
+  --bg-color-over: #82181A4D;
+  --border-mines-over: #C1000780;
+
+
 }
 
 *,
@@ -47,19 +56,22 @@
   box-sizing: border-box;
 }
 
-html {
-  height: 100%; 
-  overflow-x: hidden;  
-
-
+html {  
+   min-height: 100dvh;
  
-
 }
 
 body {  
   margin: 0;
-  padding: 0; 
-  overflow-x: hidden;  
+  padding: 0;  
+  min-height: 100vh;
+         background: linear-gradient(
+    135deg,
+    #0f172b 0%,
+    rgba(0, 79, 59, 0.4) 30%,
+    #59168b 100%
+  ); 
+ 
 }
 
 .no-scroll {
