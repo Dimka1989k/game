@@ -69,6 +69,9 @@ export function usePlinkoGame({
   }, [history]);
 
   useEffect(() => {
+    const PEG_COLOR = "rgba(255,255,255,0.30)";
+    const PEG_HIT_COLOR = "rgba(255,255,255,1)";
+    const PEG_FLASH_MS = 60;
     const container = containerRef.current;
     if (!container) return;
 
@@ -90,7 +93,7 @@ export function usePlinkoGame({
     const height = container.clientHeight;
 
     const engine = Matter.Engine.create();
-    engine.gravity.y = 1.25;
+    engine.gravity.y = 1.05;
 
     const render = Matter.Render.create({
       element: container,
@@ -129,18 +132,76 @@ export function usePlinkoGame({
       const startX = centerX - rowWidth / 2;
 
       for (let c = 0; c < cols; c++) {
-        const x = startX + c * PEG_SPACING_X;
-        const peg = Matter.Bodies.circle(x, rowY, PEG_RADIUS, {
-          isStatic: true,
-          label: "peg",
-          render: { fillStyle: "rgba(255,255,255,0.55)" },
-        });
+        const x = startX + c * PEG_SPACING_X;      
+
+       const peg = Matter.Bodies.circle(x, rowY, PEG_RADIUS, {
+         isStatic: true,
+         label: "peg",
+         render: {
+           fillStyle: PEG_COLOR,
+         },
+       });
         pegs.push(peg);
       }
     }
 
-    const slotCount = lines + 1;
-    const slotsY = height - 60 + 59;
+ const WALL_THICKNESS = 128;
+ const WALL_GAP_OFFSET = 25;
+ const WALL_COLOR = "rgba(0,0,0,0)";
+
+ const slotCount = lines + 1;
+ const slotsY = height - 1;
+
+ const pyramidHeight = slotsY - TOP_PADDING;
+ const pyramidHalfWidth = (slotCount * PEG_SPACING_X) / 2;
+
+ const pyramidAngle = Math.atan(pyramidHeight / pyramidHalfWidth);
+ const wallAngle = Math.PI / 2 - pyramidAngle;
+
+ const wallCenterY = TOP_PADDING + pyramidHeight / 2;
+ const wallLength = Math.sqrt(
+   pyramidHeight * pyramidHeight + pyramidHalfWidth * pyramidHalfWidth
+ );
+
+
+ const leftPyramidWall = Matter.Bodies.rectangle(
+   centerX - pyramidHalfWidth / 2 - WALL_GAP_OFFSET - WALL_THICKNESS / 2,
+   wallCenterY,
+   WALL_THICKNESS,
+   wallLength,
+   {
+     isStatic: true,
+     angle: wallAngle,
+     restitution: 0,
+     friction: 0.05,
+     frictionStatic: 0.1,
+     chamfer: {
+       radius: 24,
+     },
+     label: "pyramid-wall-left",
+     render: { fillStyle: WALL_COLOR },
+   }
+ );
+
+
+ const rightPyramidWall = Matter.Bodies.rectangle(
+   centerX + pyramidHalfWidth / 2 + WALL_GAP_OFFSET + WALL_THICKNESS / 2,
+   wallCenterY,
+   WALL_THICKNESS,
+   wallLength,
+   {
+     isStatic: true,
+     angle: -wallAngle,
+     restitution: 0,
+     friction: 0.05,
+     frictionStatic: 0.1,
+     chamfer: {
+       radius: 24,
+     },
+     label: "pyramid-wall-right",
+     render: { fillStyle: WALL_COLOR },
+   }
+ );    
 
     const slotW = PEG_SPACING_X;
     const totalSlotsW = slotCount * slotW;
@@ -211,7 +272,13 @@ export function usePlinkoGame({
       }),
     ];
 
-    Matter.World.add(engine.world, [...bounds, ...pegs, ...slotBodies]);
+    Matter.World.add(engine.world, [
+      ...bounds,
+      ...pegs,
+      ...slotBodies,
+      leftPyramidWall,
+      rightPyramidWall,
+    ]);
 
     Matter.Render.run(render);
     Matter.Runner.run(runner, engine);
@@ -222,7 +289,36 @@ export function usePlinkoGame({
       }
     }
 
+    const handlePegCollision = (
+      event: Matter.IEventCollision<Matter.Engine>
+    ) => {
+      for (const pair of event.pairs) {
+        const { bodyA, bodyB } = pair;
+
+        let peg: Matter.Body | null = null;
+
+        if (bodyA.label === "peg" && bodyB.label === "plinko-ball") {
+          peg = bodyA;
+        } else if (bodyB.label === "peg" && bodyA.label === "plinko-ball") {
+          peg = bodyB;
+        }
+
+        if (!peg) continue;
+    
+        peg.render.fillStyle = PEG_HIT_COLOR;
+    
+        window.setTimeout(() => {
+          if (peg.render) {
+            peg.render.fillStyle = PEG_COLOR;
+          }
+        }, PEG_FLASH_MS);
+      }
+    };
+
+    Matter.Events.on(engine, "collisionStart", handlePegCollision);
+
     return () => {
+      Matter.Events.on(engine, "collisionStart", handlePegCollision);
       if (renderRef.current) {
         Matter.Render.stop(renderRef.current);
 
@@ -279,30 +375,40 @@ export function usePlinkoGame({
     const BALL_COLOR = "#22c55e";
     const width = render.options.width ?? container.clientWidth;
     const startX = width / 2;
-    const xJitter = 6;
+    const xJitter = 2;
 
     activeBallsRef.current = [];
 
     const restitution =
       risk === "High" ? 0.15 : risk === "Medium" ? 0.22 : 0.28;
 
-    for (let b = 0; b < balls; b++) {
-      const ball = Matter.Bodies.circle(
-        startX + (Math.random() * 2 - 1) * xJitter,
-        20,
-        BALL_RADIUS,
-        {
-          restitution,
-          friction: 0.001,
-          frictionAir: 0.01,
-          density: 0.001,
-          label: "plinko-ball",
-          render: { fillStyle: BALL_COLOR },
-        }
-      );
-      activeBallsRef.current.push(ball);
-      Matter.World.add(engine.world, ball);
-    }
+   const spawnBall = () => {
+     const ball = Matter.Bodies.circle(
+       startX + (Math.random() * 2 - 1) * xJitter,
+       20,
+       BALL_RADIUS,
+       {
+         restitution,
+         friction: 0.001,
+         frictionAir: 0.01,
+         density: 0.001,
+         label: "plinko-ball",
+         render: { fillStyle: BALL_COLOR },
+       }
+     );
+
+     activeBallsRef.current.push(ball);
+     Matter.World.add(engine.world, ball);
+   };
+ 
+   const SPAWN_DELAY_MS = 120;
+
+   for (let i = 0; i < balls; i++) {
+     window.setTimeout(() => {
+       spawnBall();
+     }, i * SPAWN_DELAY_MS);
+   }
+ 
 
     const results: PlinkoBallResult[] = [];
     const settled = new Set<number>();
@@ -318,6 +424,14 @@ export function usePlinkoGame({
       const yThreshold = slots[0].yTop - 40;
       for (const ball of ballsArr) {
         if (settled.has(ball.id)) continue;
+
+
+        if (Math.abs(ball.velocity.x) > 1.2) {
+          Matter.Body.setVelocity(ball, {
+            x: ball.velocity.x * 0.6,
+            y: ball.velocity.y,
+          });
+        }
 
         const speed = ball.speed;
         if (ball.speed < 0.04 && ball.position.y < yThreshold - 20) {
