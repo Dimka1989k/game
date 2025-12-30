@@ -58,6 +58,7 @@ export function usePlinkoGame({
   const slotGeomsRef = useRef<SlotGeom[]>([]);
   const activeBallsRef = useRef<Matter.Body[]>([]);
   const lockedRef = useRef(false);
+  const TOP_PADDING = 40;
 
   const uiMultipliers = useMemo(
     () => getUIMultipliers(risk, lines),
@@ -93,7 +94,7 @@ export function usePlinkoGame({
     const height = container.clientHeight;
 
     const engine = Matter.Engine.create();
-    engine.gravity.y = 1.05;
+    engine.gravity.y = 0.7;
 
     const render = Matter.Render.create({
       element: container,
@@ -115,7 +116,7 @@ export function usePlinkoGame({
     const PEG_RADIUS = 4.5;
     const PEG_SPACING_X = 24;
     const PEG_SPACING_Y = 24;
-    const TOP_PADDING = 40;
+    
 
     const SLOT_STOPPER_H = 30;
     const SLOT_WALL_H = 70;
@@ -132,76 +133,74 @@ export function usePlinkoGame({
       const startX = centerX - rowWidth / 2;
 
       for (let c = 0; c < cols; c++) {
-        const x = startX + c * PEG_SPACING_X;      
+        const x = startX + c * PEG_SPACING_X;
 
-       const peg = Matter.Bodies.circle(x, rowY, PEG_RADIUS, {
-         isStatic: true,
-         label: "peg",
-         render: {
-           fillStyle: PEG_COLOR,
-         },
-       });
+        const peg = Matter.Bodies.circle(x, rowY, PEG_RADIUS, {
+          isStatic: true,
+          label: "peg",
+          render: {
+            fillStyle: PEG_COLOR,
+          },
+        });
         pegs.push(peg);
       }
     }
 
- const WALL_THICKNESS = 128;
- const WALL_GAP_OFFSET = 25;
- const WALL_COLOR = "rgba(0,0,0,0)";
+    const WALL_THICKNESS = 128;
+    const WALL_GAP_OFFSET = 25;
+    const WALL_COLOR = "rgba(0,0,0,0)";
 
- const slotCount = lines + 1;
- const slotsY = height - 1;
+    const slotCount = lines + 1;
+    const slotsY = height - 1;
 
- const pyramidHeight = slotsY - TOP_PADDING;
- const pyramidHalfWidth = (slotCount * PEG_SPACING_X) / 2;
+    const pyramidHeight = slotsY - TOP_PADDING;
+    const pyramidHalfWidth = (slotCount * PEG_SPACING_X) / 2;
 
- const pyramidAngle = Math.atan(pyramidHeight / pyramidHalfWidth);
- const wallAngle = Math.PI / 2 - pyramidAngle;
+    const pyramidAngle = Math.atan(pyramidHeight / pyramidHalfWidth);
+    const wallAngle = Math.PI / 2 - pyramidAngle;
 
- const wallCenterY = TOP_PADDING + pyramidHeight / 2;
- const wallLength = Math.sqrt(
-   pyramidHeight * pyramidHeight + pyramidHalfWidth * pyramidHalfWidth
- );
+    const wallCenterY = TOP_PADDING + pyramidHeight / 2;
+    const wallLength = Math.sqrt(
+      pyramidHeight * pyramidHeight + pyramidHalfWidth * pyramidHalfWidth
+    );
 
+    const leftPyramidWall = Matter.Bodies.rectangle(
+      centerX - pyramidHalfWidth / 2 - WALL_GAP_OFFSET - WALL_THICKNESS / 2,
+      wallCenterY,
+      WALL_THICKNESS,
+      wallLength,
+      {
+        isStatic: true,
+        angle: wallAngle,
+        restitution: 0,
+        friction: 0.35,
+        frictionStatic: 0.6,
+        chamfer: {
+          radius: 24,
+        },
+        label: "pyramid-wall-left",
+        render: { fillStyle: WALL_COLOR },
+      }
+    );
 
- const leftPyramidWall = Matter.Bodies.rectangle(
-   centerX - pyramidHalfWidth / 2 - WALL_GAP_OFFSET - WALL_THICKNESS / 2,
-   wallCenterY,
-   WALL_THICKNESS,
-   wallLength,
-   {
-     isStatic: true,
-     angle: wallAngle,
-     restitution: 0,
-     friction: 0.05,
-     frictionStatic: 0.1,
-     chamfer: {
-       radius: 24,
-     },
-     label: "pyramid-wall-left",
-     render: { fillStyle: WALL_COLOR },
-   }
- );
-
-
- const rightPyramidWall = Matter.Bodies.rectangle(
-   centerX + pyramidHalfWidth / 2 + WALL_GAP_OFFSET + WALL_THICKNESS / 2,
-   wallCenterY,
-   WALL_THICKNESS,
-   wallLength,
-   {
-     isStatic: true,
-     angle: -wallAngle,
-     restitution: 0,
-     friction: 0.05,
-     frictionStatic: 0.1,
-     chamfer: {
-       radius: 24,
-     },
-     label: "pyramid-wall-right",
-     render: { fillStyle: WALL_COLOR },
-   }
- );    
+    const rightPyramidWall = Matter.Bodies.rectangle(
+      centerX + pyramidHalfWidth / 2 + WALL_GAP_OFFSET + WALL_THICKNESS / 2,
+      wallCenterY,
+      WALL_THICKNESS,
+      wallLength,
+      {
+        isStatic: true,
+        angle: -wallAngle,
+        restitution: 0,
+        friction: 0.35,
+        frictionStatic: 0.6,
+        chamfer: {
+          radius: 24,
+        },
+        label: "pyramid-wall-right",
+        render: { fillStyle: WALL_COLOR },
+      }
+    );
 
     const slotW = PEG_SPACING_X;
     const totalSlotsW = slotCount * slotW;
@@ -304,9 +303,9 @@ export function usePlinkoGame({
         }
 
         if (!peg) continue;
-    
+
         peg.render.fillStyle = PEG_HIT_COLOR;
-    
+
         window.setTimeout(() => {
           if (peg.render) {
             peg.render.fillStyle = PEG_COLOR;
@@ -318,7 +317,7 @@ export function usePlinkoGame({
     Matter.Events.on(engine, "collisionStart", handlePegCollision);
 
     return () => {
-      Matter.Events.on(engine, "collisionStart", handlePegCollision);
+      Matter.Events.off(engine, "collisionStart", handlePegCollision);
       if (renderRef.current) {
         Matter.Render.stop(renderRef.current);
 
@@ -382,33 +381,32 @@ export function usePlinkoGame({
     const restitution =
       risk === "High" ? 0.15 : risk === "Medium" ? 0.22 : 0.28;
 
-   const spawnBall = () => {
-     const ball = Matter.Bodies.circle(
-       startX + (Math.random() * 2 - 1) * xJitter,
-       20,
-       BALL_RADIUS,
-       {
-         restitution,
-         friction: 0.001,
-         frictionAir: 0.01,
-         density: 0.001,
-         label: "plinko-ball",
-         render: { fillStyle: BALL_COLOR },
-       }
-     );
+    const spawnBall = () => {
+      const ball = Matter.Bodies.circle(
+        startX + (Math.random() * 2 - 1) * xJitter,
+        20,
+        BALL_RADIUS,
+        {
+          restitution,
+          friction: 0.001,
+          frictionAir: 0.01,
+          density: 0.001,
+          label: "plinko-ball",
+          render: { fillStyle: BALL_COLOR },
+        }
+      );
 
-     activeBallsRef.current.push(ball);
-     Matter.World.add(engine.world, ball);
-   };
- 
-   const SPAWN_DELAY_MS = 120;
+      activeBallsRef.current.push(ball);
+      Matter.World.add(engine.world, ball);
+    };
 
-   for (let i = 0; i < balls; i++) {
-     window.setTimeout(() => {
-       spawnBall();
-     }, i * SPAWN_DELAY_MS);
-   }
- 
+    const SPAWN_DELAY_MS = 120;
+
+    for (let i = 0; i < balls; i++) {
+      window.setTimeout(() => {
+        spawnBall();
+      }, i * SPAWN_DELAY_MS);
+    }
 
     const results: PlinkoBallResult[] = [];
     const settled = new Set<number>();
@@ -425,10 +423,11 @@ export function usePlinkoGame({
       for (const ball of ballsArr) {
         if (settled.has(ball.id)) continue;
 
+        const MAX_X_VELOCITY = 1.1;
 
-        if (Math.abs(ball.velocity.x) > 1.2) {
+        if (Math.abs(ball.velocity.x) > MAX_X_VELOCITY) {
           Matter.Body.setVelocity(ball, {
-            x: ball.velocity.x * 0.6,
+            x: ball.velocity.x * 0.7, // ⬅ гасимо, але НЕ фіксуємо
             y: ball.velocity.y,
           });
         }
@@ -442,6 +441,35 @@ export function usePlinkoGame({
         }
         const isLow = speed < 0.25;
         const isLowEnough = ball.position.y > yThreshold;
+
+        const centerX = (render.options.width ?? container.clientWidth) / 2;
+        const driftFromCenter = ball.position.x - centerX;
+
+        if (
+          ball.position.y < TOP_PADDING + 120 &&
+          Math.abs(driftFromCenter) > 30
+        ) {
+          Matter.Body.applyForce(ball, ball.position, {
+            x: -driftFromCenter * 0.0000015,
+            y: 0,
+          });
+        }
+
+        if (
+          ball.position.y > yThreshold - 120 &&
+          ball.position.y < yThreshold
+        ) {
+          const centerX = (render.options.width ?? container.clientWidth) / 2;
+          const drift = ball.position.x - centerX;
+
+          // імовірнісно (не завжди!)
+          if (Math.random() < 0.35) {
+            Matter.Body.applyForce(ball, ball.position, {
+              x: -drift * 0.0000009,
+              y: 0,
+            });
+          }
+        }
 
         if (isLow && isLowEnough) {
           const slotIndex = slots.findIndex(
