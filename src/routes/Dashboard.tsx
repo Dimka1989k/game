@@ -3,6 +3,9 @@ import { useEffect, useRef, useState } from "react";
 import { UserAuth } from "../context/AuthContext";
 import { GameState } from "../types/GameState";
 
+import { useCallback } from "react";
+import type { PlinkoFinishPayload } from "../types/plinko.types";
+
 import casinoSound from "../assets/sounds/casino1.mp3";
 import carSound from "../assets/sounds/car.mp3";
 import won from "../assets/sounds/won.mp3";
@@ -19,6 +22,7 @@ import Bonus from "../components/Bonus/Bonus";
 import Leaderboard from "../components/Leader/LeaderBoard";
 import Cases from "../components/Cases/Cases";
 import Mines from "../components/Mines/Mines";
+import Plinko from "../components/Plinko/Plinko";
 
 import type { ActiveBet } from "../types/bet.types";
 import { formatTime } from "../utils/formatTime";
@@ -101,7 +105,6 @@ export default function Dashboard() {
     updateUsername,
   });
 
- 
   const { bonusCountdown, handleClaimBonus } = useBonusSystem({
     session,
     profile,
@@ -120,6 +123,7 @@ export default function Dashboard() {
     if (tab === GameTab.Car) return GameTab.Car;
     if (tab === GameTab.Cases) return GameTab.Cases;
     if (tab === GameTab.Mines) return GameTab.Mines;
+    if (tab === GameTab.Plinko) return GameTab.Plinko;
 
     return GameTab.Car;
   };
@@ -264,15 +268,15 @@ export default function Dashboard() {
 
     loseAudioRef.current?.play().catch(() => {});
 
-   if (cashoutTimeoutRef.current) {
-     clearTimeout(cashoutTimeoutRef.current);
-   }
+    if (cashoutTimeoutRef.current) {
+      clearTimeout(cashoutTimeoutRef.current);
+    }
 
-   cashoutTimeoutRef.current = window.setTimeout(() => {
-     setCrashValue(0);
-     setGameState(GameState.Idle);
-     setActiveBet(null);
-   }, 800);
+    cashoutTimeoutRef.current = window.setTimeout(() => {
+      setCrashValue(0);
+      setGameState(GameState.Idle);
+      setActiveBet(null);
+    }, 800);
   };
 
   const balanceText =
@@ -287,7 +291,6 @@ export default function Dashboard() {
     setSearchParams({ tab });
   };
 
-
   useEffect(() => {
     return () => {
       if (cashoutTimeoutRef.current) {
@@ -296,6 +299,28 @@ export default function Dashboard() {
       }
     };
   }, []);
+
+  const handlePlinkoFinish = useCallback(
+    async (payload: PlinkoFinishPayload) => {
+      if (!profile) return;
+
+      const isWin = payload.netProfit > 0;
+
+      await applyBetResult({
+        amount: Math.abs(payload.netProfit),
+        isCashOut: isWin,
+        isWin,
+        resultMultiplier: isWin ? payload.totalPayout / payload.totalBet : 0,
+      });
+
+      if (isWin) {
+        winAudioRef.current?.play().catch(() => {});
+      } else {
+        loseAudioRef.current?.play().catch(() => {});
+      }
+    },
+    [applyBetResult, profile, winAudioRef, loseAudioRef]
+  );
 
   return (
     <div className="page-wrapper">
@@ -336,11 +361,7 @@ export default function Dashboard() {
           )}
 
           {activeTab === "cases" && (
-            <Cases
-              profile={profile}
-              setProfile={setProfile}
-              userId={userId}             
-            />
+            <Cases profile={profile} setProfile={setProfile} userId={userId} />
           )}
           {activeTab === "mines" && (
             <Mines
@@ -364,6 +385,7 @@ export default function Dashboard() {
               }}
             />
           )}
+          {activeTab === "plinko" && <Plinko onFinish={handlePlinkoFinish} />}
         </div>
         <div className="container-bonus-leaderboard">
           <Bonus
